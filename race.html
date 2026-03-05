@@ -792,8 +792,26 @@ function drawTrafficCar(sx,sy,sc,col,tw) {
   ctx.fillStyle='#ff3333';ctx.fillRect(sx-w/2+2,sy-4,w*0.15,3);ctx.fillRect(sx+w/2-w*0.15-2,sy-4,w*0.15,3);
 }
 
-function spawnParticles(x,y,n,color) {
-  for(let i=0;i<n;i++) particles.push({x,y,vx:(Math.random()-0.5)*10,vy:-Math.random()*8-2,life:25+Math.random()*25,color:color||`hsl(${190+Math.random()*40},100%,${60+Math.random()*30}%)`});
+function spawnParticles(x,y,n,color,spread) {
+  const sp = spread || 10;
+  for(let i=0;i<n;i++) particles.push({
+    x, y,
+    vx: (Math.random()-0.5) * sp,
+    vy: -Math.random() * 8 - 2,
+    life: 20 + Math.random() * 25,
+    size: 1 + Math.random() * 3,
+    color: color || `hsl(${190+Math.random()*40},100%,${60+Math.random()*30}%)`
+  });
+}
+function spawnSparks(x,y,n) {
+  for(let i=0;i<n;i++) particles.push({
+    x, y,
+    vx: (Math.random()-0.5) * 15,
+    vy: -Math.random() * 4 - 1,
+    life: 8 + Math.random() * 12,
+    size: 1,
+    color: `hsl(${40+Math.random()*20},100%,${70+Math.random()*20}%)`
+  });
 }
 
 // ─── SPEEDOMETER ───
@@ -876,27 +894,42 @@ function gameLoop(ts) {
   ctx.fillStyle = skyG;
   ctx.fillRect(0, 0, W, H * 0.52);
 
-  // Stars (parallax)
+  // Dynamic sky based on speed (faster = more intense)
+  const skyIntensity = Math.min(1, raceSpeed / 250);
+  
+  // Stars (parallax, twinkle)
   ctx.fillStyle = 'rgba(255,255,255,0.7)';
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 35; i++) {
     const sx = (i * 137.5 + roadPos * 0.005) % W;
     const sy = (i * 97.3) % (H * 0.35) + 10;
-    const sz = 0.5 + (i % 3) * 0.5;
+    const twinkle = 0.3 + Math.sin(frameCount * 0.05 + i * 1.7) * 0.4;
+    const sz = (0.5 + (i % 3) * 0.5) * twinkle;
+    ctx.globalAlpha = twinkle;
     ctx.fillRect(sx, sy, sz, sz);
   }
+  ctx.globalAlpha = 1;
 
-  // Moon
-  ctx.fillStyle='rgba(200,220,255,0.15)';ctx.beginPath();ctx.arc(W*0.15,H*0.12,25,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='rgba(220,240,255,0.25)';ctx.beginPath();ctx.arc(W*0.15,H*0.12,18,0,Math.PI*2);ctx.fill();
+  // Moon with glow
+  const moonGlow = ctx.createRadialGradient(W*0.15,H*0.12,10,W*0.15,H*0.12,40);
+  moonGlow.addColorStop(0, 'rgba(220,240,255,0.25)');
+  moonGlow.addColorStop(0.5, 'rgba(200,220,255,0.08)');
+  moonGlow.addColorStop(1, 'rgba(200,220,255,0)');
+  ctx.fillStyle=moonGlow;ctx.fillRect(W*0.15-40,H*0.12-40,80,80);
+  ctx.fillStyle='rgba(230,240,255,0.3)';ctx.beginPath();ctx.arc(W*0.15,H*0.12,14,0,Math.PI*2);ctx.fill();
 
-  // Sun/horizon glow
+  // Sun/horizon glow (intensifies with speed)
   const sunY = H * 0.48;
-  const sunG = ctx.createRadialGradient(W * 0.65, sunY, 8, W * 0.65, sunY, 80);
-  sunG.addColorStop(0, 'rgba(255,200,50,0.6)');
-  sunG.addColorStop(0.3, 'rgba(255,100,20,0.3)');
+  const sunSize = 60 + skyIntensity * 30;
+  const sunG = ctx.createRadialGradient(W * 0.65, sunY, 5, W * 0.65, sunY, sunSize);
+  sunG.addColorStop(0, `rgba(255,200,50,${0.4 + skyIntensity * 0.3})`);
+  sunG.addColorStop(0.3, `rgba(255,100,20,${0.2 + skyIntensity * 0.2})`);
   sunG.addColorStop(1, 'rgba(255,50,0,0)');
   ctx.fillStyle = sunG;
-  ctx.fillRect(W * 0.5, sunY - 80, W * 0.3, 160);
+  ctx.fillRect(W * 0.5, sunY - sunSize, W * 0.3, sunSize * 2);
+  
+  // Horizon line glow
+  ctx.fillStyle = `rgba(255,100,30,${0.1 + skyIntensity * 0.15})`;
+  ctx.fillRect(0, H * 0.48, W, 4);
 
   // Ground
   ctx.fillStyle = '#0d2818';
@@ -960,7 +993,8 @@ function gameLoop(ts) {
       if (t.seg < 0) t.seg += SEGMENTS;
       if (rel < 6 && rel > 1 && Math.abs(playerX - t.lane) < 0.5) {
         overtakeCount++;
-        spawnParticles(p.x + t.lane * p.w, p.y, 6, '#ffcc00');
+        spawnSparks(p.x + t.lane * p.w, p.y, 8);
+        spawnParticles(p.x + t.lane * p.w, p.y, 4, '#ffcc00', 6);
         t.seg = Math.floor(Math.random() * SEGMENTS * 0.5) + 50;
         t.lane = (Math.random() - 0.5) * 1.4;
       }
@@ -972,7 +1006,12 @@ function gameLoop(ts) {
 
   // Particles
   ctx.globalAlpha = 1;
-  particles.forEach(p => { ctx.globalAlpha = Math.max(0, p.life / 50); ctx.fillStyle = p.color; ctx.fillRect(p.x - 2, p.y - 2, 4, 4); });
+  particles.forEach(p => {
+    ctx.globalAlpha = Math.max(0, p.life / 40);
+    ctx.fillStyle = p.color;
+    const s = p.size || 2;
+    ctx.fillRect(p.x - s/2, p.y - s/2, s, s);
+  });
   ctx.globalAlpha = 1;
 
   // Speed lines
