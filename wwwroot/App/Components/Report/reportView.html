@@ -1,0 +1,102 @@
+﻿<div id="desktop-view">
+
+    <!--Loading screen for main panel-->
+
+    <div class="desktop-panel" ng-if="!clients || reportsLoading == true">
+        <div></div>
+        <div class="loading-panel">
+            <div class="icon">
+                <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+            </div>
+        </div>
+        <div></div>
+    </div>
+
+    <!--Main panel-->
+
+    <div class="desktop-panel" ng-if="clients && step == 'select'">
+
+        <div class="back-bar">
+            <div class="back-button" title="Return to the previous page" onclick="window.history.back();">
+                <i class="fas fa-arrow-left"></i>
+            </div>
+            <h2 style="align-self:center; padding-top:7px;">Reports</h2>
+            <div class="back-button-disabled"></div>
+        </div>
+
+        <div style="align-self:center; width:40%;">
+            <div ng-if="clients.length > 1 || !user.internal">
+                <label>Client:</label>
+                <div class="single-address">
+                    <div class="address-payload">
+                        <div class="address-component">
+                            <select class="data-input" ng-model="user.selectedClient" ng-options="client as client.name for client in clients">
+                                <option value="" disabled selected hidden>Select a client...</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="height:16px;"></div>
+
+            <div ng-if="user.internal">
+                <label>Client Search:</label>
+                <div class="single-address">
+                    <div class="address-payload">
+                        <div class="address-component">
+                            <ui-select ng-model="user.selectedClient"
+                                       skip-focusser="true"
+                                       style="width:100%">
+                                <ui-select-match placeholder="Search for a client...">
+                                    <span ng-bind="$select.selected.name + ' - ' + $select.selected.code + ' - ' + $select.selected.americanCity"></span>
+                                </ui-select-match>
+                                <ui-select-choices repeat="client as client in (delayedClients | filter: $select.search | limitTo: 50)" refresh="realResults($select.search)" refresh-delay="0">
+                                    <span ng-bind="client.name + ' - ' + client.code + ' - ' + client.americanCity"></span>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button class="confirm-button" ng-disabled="!user.selectedClient" ng-class="{'disabled-Button': !user.selectedClient}" ng-click="viewReports()">View Reports</button>
+    </div>
+
+    <div class="desktop-panel" ng-if="step == 'edit' && reportsLoading != true">
+        <div>
+            <div class="back-bar">
+                <div class="back-button" title="Change selected client" ng-click="reportsBack()">
+                    <i class="fas fa-arrow-left"></i>
+                </div>
+                <h2 style="align-self:center; padding-top:7px;">View Reports</h2>
+                <div class="back-button-disabled"></div>
+            </div>
+        </div>
+
+        <div class="form-group" style="align-self:center; width: 40%;" ng-if="user.selectedClient.id == 2256 || user.selectedClient.id == 17689 || user.selectedClient.id == 36604">
+            <h1 style="text-align:center;">Ingram Manifest Report</h1>
+
+            <label>Format:</label>
+            <select class="form-control" ng-model="user.report.format">
+                <option value="">PDF</option>
+                <option value="EXCEL">EXCEL</option>
+            </select>
+
+            <label style="padding-top:7px;">Date:</label>
+            <input class="form-control" type="date" ng-model="user.report.date" />
+
+            <label style="padding-top:7px;">Time:</label>
+            <input class="form-control" type="time" ng-model="user.report.time" />
+
+            <button class="confirm-button" style="margin-top:10px;" ng-disabled="!user.report.date || !user.report.time" ng-click="executeIngramReport()">Execute Report</button>
+        </div>
+
+        <div class="form-group" style="align-self:center;width: 40%;text-align:center;" ng-if="user.selectedClient.id != 2256 && user.selectedClient.id != 17689 && user.selectedClient.id != 36604">
+            <label>No reports currently available for this client!</label>
+        </div>
+
+        <div></div>
+    </div>
+</div>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="urgentOnePageBooking">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0" />
+    <title ng-bind="$state.current.data.pageTitle">Booking</title>
+    <script type="text/javascript">
+        function initMap() { console.log("maps loaded"); }
+        var PublicPath = '/';
+        var LoggedInPath = '/';
+    </script>
+    <!-- Google Maps full stub for NgMap/GeoCoder dependency -->
+    <script>
+      (function(){
+        var noop=function(){return this};
+        var G=window.google=window.google||{};
+        var M=G.maps=G.maps||{};
+
+        M.LatLng=function(a,b){this.lat=function(){return a};this.lng=function(){return b};this.toString=function(){return'('+a+','+b+')'};this.toJSON=function(){return{lat:a,lng:b}}};
+        M.LatLngBounds=function(){var s=this;s.extend=noop;s.contains=function(){return false};s.getCenter=function(){return new M.LatLng(0,0)};s.getNorthEast=function(){return new M.LatLng(0,0)};s.getSouthWest=function(){return new M.LatLng(0,0)};s.union=noop;s.isEmpty=function(){return true};s.toJSON=function(){return{}}};
+
+        var mapProto={setCenter:noop,setZoom:noop,getCenter:function(){return new M.LatLng(0,0)},getZoom:function(){return 12},setOptions:noop,fitBounds:noop,getBounds:function(){return new M.LatLngBounds()},getDiv:function(){return document.createElement('div')},getMapTypeId:function(){return'roadmap'},setMapTypeId:noop,addListener:function(){return{remove:noop}},getProjection:function(){return{fromLatLngToPoint:function(){return new M.Point(0,0)},fromPointToLatLng:function(){return new M.LatLng(0,0)}}},controls:[],data:{setStyle:noop,addGeoJson:noop},panTo:noop,panBy:noop};
+        M.Map=function(el,opts){for(var k in mapProto)this[k]=mapProto[k];this.controls=[];for(var i=0;i<25;i++)this.controls.push({push:noop,clear:noop})};
+
+        var mkStub=function(extra){return function(opts){this.setMap=noop;this.getMap=noop;this.setPosition=noop;this.getPosition=function(){return new M.LatLng(0,0)};this.setOptions=noop;this.addListener=function(){return{remove:noop}};this.setVisible=noop;this.getVisible=function(){return false};this.setPath=noop;this.getPath=function(){return new M.MVCArray()};this.setIcon=noop;this.setDraggable=noop;this.bindTo=noop;if(extra)for(var k in extra)this[k]=extra[k]}};
+
+        M.Marker=mkStub({getTitle:function(){return''},setTitle:noop,setLabel:noop,setAnimation:noop,getAnimation:function(){return null}});
+        M.Polyline=mkStub();
+        M.Polygon=mkStub({getPaths:function(){return new M.MVCArray()}});
+        M.Circle=mkStub({getCenter:function(){return new M.LatLng(0,0)},getRadius:function(){return 0},setCenter:noop,setRadius:noop});
+        M.Rectangle=mkStub({getBounds:function(){return new M.LatLngBounds()},setBounds:noop});
+        M.GroundOverlay=mkStub();
+        M.KmlLayer=mkStub();
+        M.FusionTablesLayer=mkStub();
+        M.BicyclingLayer=mkStub();
+        M.TrafficLayer=mkStub();
+        M.TransitLayer=mkStub();
+        M.InfoWindow=function(){this.open=noop;this.close=noop;this.setContent=noop;this.getContent=function(){return''};this.setPosition=noop;this.getPosition=function(){return new M.LatLng(0,0)};this.addListener=function(){return{remove:noop}}};
+
+        M.Geocoder=function(){this.geocode=function(req,cb){cb([],M.GeocoderStatus.ZERO_RESULTS)}};
+        M.GeocoderStatus={OK:'OK',ZERO_RESULTS:'ZERO_RESULTS'};
+
+        M.DirectionsService=function(){this.route=function(req,cb){cb({routes:[]},M.DirectionsStatus.ZERO_RESULTS)}};
+        M.DirectionsStatus={OK:'OK',ZERO_RESULTS:'ZERO_RESULTS'};
+        M.DirectionsRenderer=function(){this.setMap=noop;this.setDirections=noop;this.setOptions=noop;this.getDirections=function(){return{routes:[]}}};
+
+        M.StreetViewPanorama=function(){this.setPosition=noop;this.setVisible=noop;this.setPov=noop;this.addListener=function(){return{remove:noop}}};
+        M.StreetViewService=function(){this.getPanorama=function(req,cb){cb(null,M.StreetViewStatus.ZERO_RESULTS)}};
+        M.StreetViewStatus={OK:'OK',ZERO_RESULTS:'ZERO_RESULTS'};
+        M.StreetViewCoverageLayer=mkStub();
+
+        M.places={
+          Autocomplete:function(el,opts){this.setTypes=noop;this.setBounds=noop;this.setComponentRestrictions=noop;this.getPlace=function(){return{}};this.addListener=function(){return{remove:noop}};this.bindTo=noop},
+          AutocompleteService:function(){this.getPlacePredictions=function(req,cb){cb([],'ZERO_RESULTS')}},
+          PlacesService:function(){this.getDetails=function(req,cb){cb(null,'ZERO_RESULTS')};this.nearbySearch=function(req,cb){cb([],'ZERO_RESULTS')};this.textSearch=function(req,cb){cb([],'ZERO_RESULTS')}},
+          SearchBox:function(el){this.setBounds=noop;this.getPlaces=function(){return[]};this.addListener=function(){return{remove:noop}}}
+        };
+
+        M.event={addListener:function(){return{remove:noop}},removeListener:noop,trigger:noop,addDomListener:function(){return{remove:noop}},addListenerOnce:function(){return{remove:noop}},clearListeners:noop,clearInstanceListeners:noop};
+
+        M.MVCArray=function(arr){var a=arr||[];this.getLength=function(){return a.length};this.getAt=function(i){return a[i]};this.push=function(v){a.push(v)};this.forEach=function(fn){a.forEach(fn)};this.setAt=function(i,v){a[i]=v};this.removeAt=function(i){a.splice(i,1)};this.insertAt=function(i,v){a.splice(i,0,v)};this.clear=function(){a.length=0};this.getArray=function(){return a}};
+        M.MVCObject=function(){};M.MVCObject.prototype.set=noop;M.MVCObject.prototype.get=function(){return null};M.MVCObject.prototype.bindTo=noop;M.MVCObject.prototype.addListener=function(){return{remove:noop}};
+
+        M.OverlayView=function(){};M.OverlayView.prototype=new M.MVCObject();M.OverlayView.prototype.setMap=noop;M.OverlayView.prototype.getMap=function(){return null};M.OverlayView.prototype.getPanes=function(){return{overlayLayer:document.createElement('div'),overlayMouseTarget:document.createElement('div'),floatPane:document.createElement('div'),mapPane:document.createElement('div'),markerLayer:document.createElement('div')}};M.OverlayView.prototype.getProjection=function(){return{fromLatLngToDivPixel:function(){return new M.Point(0,0)},fromDivPixelToLatLng:function(){return new M.LatLng(0,0)}}};M.OverlayView.prototype.draw=noop;M.OverlayView.prototype.onAdd=noop;M.OverlayView.prototype.onRemove=noop;
+        M.OverlayView.preventMapHitsAndGesturesFrom=noop;
+        M.OverlayView.preventMapHitsFrom=noop;
+
+        M.Size=function(w,h){this.width=w;this.height=h;this.equals=function(s){return s&&s.width===w&&s.height===h}};
+        M.Point=function(x,y){this.x=x;this.y=y;this.equals=function(p){return p&&p.x===x&&p.y===y}};
+        M.MapTypeId={ROADMAP:'roadmap',SATELLITE:'satellite',HYBRID:'hybrid',TERRAIN:'terrain'};
+        M.ControlPosition={TOP_LEFT:1,TOP_CENTER:2,TOP_RIGHT:3,LEFT_TOP:4,LEFT_CENTER:5,LEFT_BOTTOM:6,BOTTOM_LEFT:7,BOTTOM_CENTER:8,BOTTOM_RIGHT:9,RIGHT_BOTTOM:10,RIGHT_CENTER:11,RIGHT_TOP:12};
+        M.Animation={BOUNCE:1,DROP:2};
+        M.SymbolPath={CIRCLE:0,FORWARD_CLOSED_ARROW:1,FORWARD_OPEN_ARROW:2,BACKWARD_CLOSED_ARROW:3,BACKWARD_OPEN_ARROW:4};
+        M.TravelMode={DRIVING:'DRIVING',WALKING:'WALKING',BICYCLING:'BICYCLING',TRANSIT:'TRANSIT'};
+        M.UnitSystem={METRIC:0,IMPERIAL:1};
+        M.geometry={spherical:{computeDistanceBetween:function(){return 0},computeHeading:function(){return 0},computeOffset:function(){return new M.LatLng(0,0)},interpolate:function(){return new M.LatLng(0,0)}}};
+        M.drawing={OverlayType:{MARKER:'marker',POLYGON:'polygon',POLYLINE:'polyline',RECTANGLE:'rectangle',CIRCLE:'circle'},DrawingManager:mkStub()};
+
+        function initMap(){console.log('maps stub loaded')}
+        window.initMap=initMap;
+      })();
+    </script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-1.10.2.js" crossorigin="anonymous"></script>
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.1/css/all.css">
+    <!-- Favicon -->
+    <link rel="icon" href="/Assets/images/favicon.ico?7" type="image/x-icon">
+    <!-- Autocomplete -->
+    <link rel="stylesheet" href="/Assets/lib/autocomplete/angular-auto-complete.css">
+    <!-- MD-Time-Picker -->
+    <link rel="stylesheet" type="text/css" href="/Assets/lib/material-time-picker/mdtimepicker.css">
+    <!-- CSS -->
+    <link rel="stylesheet" href="/Assets/css/site.css" />
+    <link rel="stylesheet" href="/Assets/lib/ui-select/select.css" />
+    <link rel="stylesheet" type="text/css" href="https://js.api.here.com/v3/3.1/mapsjs-ui.css" />
+    <style>
+      .test-banner-top{background:#fcf8e3;border-bottom:1px solid #faebcc;color:#8a6d3b;padding:6px 12px;text-align:center;font-size:12px;position:fixed;top:0;left:0;right:0;z-index:9999}
+      body{padding-top:28px}
+      #js-errors{background:#fee;border:1px solid #f66;color:#900;padding:8px;margin:10px;font-size:12px;font-family:monospace;white-space:pre-wrap;display:none;position:fixed;bottom:0;left:0;right:0;z-index:99999;max-height:200px;overflow-y:auto}
+    </style>
+    <script>
+      var _jsErrors=[];
+      window.onerror=function(msg,url,line,col,err){
+        _jsErrors.push(msg+' ('+url+':'+line+')');
+        var el=document.getElementById('js-errors');
+        if(el){el.style.display='block';el.textContent='JS ERRORS:\n'+_jsErrors.join('\n')}
+      };
+    </script>
+</head>
+<body ng-class="$state.current.data.background">
+    <div class="test-banner-top"><i class="fas fa-flask"></i> <b>TEST MODE</b> — All APIs mocked. Rates are fake. No real bookings created.</div>
+    <div id="js-errors"></div>
+    <div class="app fill-page">
+        <div class="notification">
+            <i class="fas {{notificationIcon}}"></i> {{notificationText}}
+        </div>
+        <div class="prompt modal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" style="top:35%" role="document">
+                <div class="modal-content">
+                    <div class="modal-header"><h5 class="modal-title">{{promptTitle}}</h5></div>
+                    <div class="modal-body">{{promptText}}</div>
+                    <div class="prompt-footer">
+                        <i class="prompt-button prompt-button-confirm fas fa-check" data-dismiss="modal" ng-click="promptConfirm()"><span class="prompt-button-text">CONFIRM</span></i>
+                        <i class="prompt-button prompt-button-cancel fas fa-times" data-dismiss="modal" ng-click="promptCancel()"><span class="prompt-button-text">CANCEL</span></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <header>
+            <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-dark bg-black border-bottom box-shadow mb-3">
+                <div class="container">
+                    <a class="navbar-brand" style="margin-top:-10px;">
+                        <img class="logo" src="/Assets/images/deliverDifferentLogo.png" onerror="this.src='/Assets/images/urgentLogo.png'" max-width="200" height="50" />
+                    </a>
+                    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target=".navbar-collapse">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                        <ul class="navbar-nav flex-grow-1" style="justify-content:space-between;">
+                            <li><ul style="display:flex;flex-direction:row;list-style-type:none;">
+                                <li class="nav-item" ng-class="{active: $state.current.data.pageID == 'home'}"><a class="nav-link" ui-sref="home">Home</a></li>
+                                <li class="nav-item" ng-class="{active: $state.current.data.pageID == 'jobList'}" ng-if="!$state.current.data.hideForCreditCard && $state.current.data.pageID != 'asure'"><a class="nav-link" ui-sref="jobList">Job List</a></li>
+                                <li class="nav-item" ng-if="!$state.current.data.hideForCreditCard && $state.current.data.pageID != 'asure'"><a class="nav-link" ui-sref="setting">Settings</a></li>
+                            </ul></li>
+                            <li><ul style="display:flex;flex-direction:row;list-style-type:none;">
+                                <li class="nav-item"><a style="cursor:pointer" class="nav-link" ng-click="navigateToHub()">DFRNT Hub</a></li>
+                            </ul></li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </header>
+        <div class="app-body">
+            <div class="ui-viewer" ui-view></div>
+        </div>
+    </div>
+    <!-- Angular & Dependencies -->
+    <script src="/Assets/lib/angular/angular.min.js"></script>
+    <script src="/Assets/lib/angular/angular-sanitize.js"></script>
+    <script src="/Assets/lib/ui-bootstrap/ui-bootstrap-tpls-2.5.0.min.js"></script>
+    <script src="/Assets/lib/ui-router/angular-ui-router.min.js"></script>
+    <script src="/Assets/lib/ui-router/ct-ui-router-extras.min.js"></script>
+    <script src="/Assets/lib/pagination/dirPagination.js"></script>
+    <script src="/Assets/lib/jquery/dist/jquery.min.js"></script>
+    <script src="/Assets/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/Assets/lib/ui-select/select.js"></script>
+    <script src="/Assets/lib/ng-map.min.js"></script>
+    <script src="/Assets/lib/ng-map-autocomplete.js"></script>
+    <script src="/Assets/lib/autocomplete/angular-auto-complete.js"></script>
+    <script type="text/javascript" src="/Assets/lib/material-time-picker/mdtimepicker.js"></script>
+    <!-- HERE Maps stubbed for test mode -->
+    <script>
+      // Full HERE Maps stub
+      (function(){
+        var noop=function(){return this};
+        var mkObj=function(){return{addObject:noop,removeObject:noop,removeObjects:noop,addObjects:noop,setCenter:noop,setGeometry:noop,getObjects:function(){return[]},getViewModel:function(){return{setLookAtData:noop}},dispose:noop,setZoom:noop,getViewPort:function(){return{resize:function(){}}},getZoom:function(){return 14},addEventListener:noop,removeEventListener:noop,screenToGeo:function(){return{lat:0,lng:0}},getCenter:function(){return{lat:0,lng:0}}}};
+        var MapCtor=function(){var m=mkObj();return m};
+        MapCtor.EngineType={HARP:1,WEBGL:2,P2D:0};
+        var layerObj={map:{}};
+        window.H={
+          Map:MapCtor,
+          geo:{Point:function(a,b){this.lat=a;this.lng=b;this.equals=function(){return false}},LineString:function(){this.pushPoint=noop},Rect:function(){},Strip:function(){this.pushLatLngAlt=noop}},
+          map:{
+            Icon:function(){},
+            Marker:function(p,o){this.setGeometry=noop;this.setData=noop;this.getData=function(){return null};this.addEventListener=noop;this.setIcon=noop;this.setVisibility=noop},
+            Polyline:function(){this.setGeometry=noop;this.setStyle=noop},
+            Polygon:function(){this.setGeometry=noop},
+            Circle:function(){this.setCenter=noop;this.setRadius=noop},
+            Group:function(){this.addObject=noop;this.addObjects=noop;this.removeAll=noop;this.removeObject=noop;this.getObjects=function(){return[]};this.getBoundingBox=function(){return null};this.addEventListener=noop},
+            EngineType:{HARP:1,WEBGL:2,P2D:0},
+            Style:function(){}
+          },
+          service:{
+            Platform:function(){
+              this.createDefaultLayers=function(){return{vector:{normal:layerObj},raster:{normal:layerObj,satellite:layerObj}}};
+              this.getSearchService=function(){return{geocode:function(p,cb){cb({items:[]})},reverseGeocode:function(p,cb){cb({items:[]})}}};
+              this.getRoutingService=function(a,b){return{calculateRoute:function(p,cb){cb({routes:[]})}}};
+            }
+          },
+          mapevents:{
+            Behavior:function(){this.disable=noop;this.enable=noop},
+            Behavior_Feature:{FRACTIONAL_ZOOM:1},
+            MapEvents:function(){}
+          },
+          ui:{
+            UI:{createDefault:function(){return{addControl:noop,removeControl:noop,dispose:noop,getBubbles:function(){return[]}}}},
+            ZoomControl:function(){},
+            InfoBubble:function(){this.open=noop;this.close=noop;this.setContent=noop;this.getPosition=function(){return{lat:0,lng:0}}}
+          },
+          clustering:{Provider:function(){},DataPoint:function(a,b,c){this.lat=a;this.lng=b}},
+          data:{geojson:{Reader:function(){this.parse=noop;this.getParsedObjects=function(){return[]}}}}
+        };
+        // Also set on Map constructor
+        H.mapevents.Behavior.Feature={FRACTIONAL_ZOOM:1,HEADING:2,TILT:4,ZOOM:8};
+      })();
+    </script>
+    <!-- Angular app -->
+    <script src="/App/app.js"></script>
+    <script src="/App/Components/AddressBook/addressBookControl.js"></script>
+    <script src="/App/Components/Client/clientControl.js"></script>
+    <script src="/App/Components/Contact/contactControl.js"></script>
+    <script src="/App/Components/Dimension/dimensionControl.js"></script>
+    <script src="/App/Components/Home/homeControl.js"></script>
+    <script src="/App/Components/Home/desktopHomeControl.js"></script>
+    <script src="/App/Components/Invoice/invoiceControl.js"></script>
+    <script src="/App/Components/JobList/jobListControl.js"></script>
+    <script src="/App/Components/Report/reportControl.js"></script>
+    <script src="/App/Components/SavedBooking/savedBookingControl.js"></script>
+    <script src="/App/Components/Setting/settingControl.js"></script>
+    <script src="/App/Components/StripeConfirmation/stripeConfirmationControl.js"></script>
+    <script src="/App/Components/Stripe/stripeControl.js"></script>
+    <script src="/App/Components/Terms/termsControl.js"></script>
+    <script src="/App/Components/AsureQuality/desktopAsureControl.js"></script>
+    <script src="/App/Services/addressBooksService.js"></script>
+    <script src="/App/Services/clientsService.js"></script>
+    <script src="/App/Services/confirmationsService.js"></script>
+    <script src="/App/Services/contactsService.js"></script>
+    <script src="/App/Services/dimensionsService.js"></script>
+    <script src="/App/Services/homesService.js"></script>
+    <script src="/App/Services/invoicesService.js"></script>
+    <script src="/App/Services/jobListsService.js"></script>
+    <script src="/App/Services/reportsService.js"></script>
+    <script src="/App/Services/savedBookingsService.js"></script>
+    <script src="/App/Services/stripesService.js"></script>
+</body>
+</html>

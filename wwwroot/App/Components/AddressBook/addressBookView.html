@@ -1,0 +1,203 @@
+﻿<div id="desktop-view">
+
+    <!--Loading screen for main panel-->
+
+    <div class="desktop-panel" ng-if="!clients || saveInProgress == true">
+        <div></div>
+        <div class="loading-panel">
+            <div class="icon">
+                <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+            </div>
+        </div>
+        <div></div>
+    </div>
+
+    <!--Main panel-->
+
+    <div class="desktop-panel" ng-if="clients && step == 'select'">
+
+        <div class="back-bar">
+            <div class="back-button" title="Return to the previous page" onclick="window.history.back();">
+                <i class="fas fa-arrow-left"></i>
+            </div>
+            <h2 style="align-self:center; padding-top:7px;">Address Book</h2>
+            <div class="back-button-disabled"></div>
+        </div>
+
+        <div style="align-self:center; width:40%;">
+            <div ng-if="clients.length > 1 || !user.internal">
+                <label>Client:</label>
+                <div class="single-address">
+                    <div class="address-payload">
+                        <div class="address-component">
+                            <select class="data-input" ng-model="user.selectedClient" ng-change="getAddressBook()" ng-options="client as client.name for client in clients">
+                                <option value="" disabled selected hidden>Select a client...</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="height:16px;"></div>
+            </div>
+
+            <div ng-if="user.internal">
+                <label>Client Search:</label>
+                <div class="single-address">
+                    <div class="address-payload">
+                        <div class="address-component">
+                            <ui-select ng-model="user.selectedClient"
+                                       ng-change="getAddressBook()"
+                                       skip-focusser="true"
+                                       style="width:100%">
+                                <ui-select-match placeholder="Search for a client...">
+                                    <span ng-bind="$select.selected.name + ' - ' + $select.selected.code + ' - ' + $select.selected.americanCity"></span>
+                                </ui-select-match>
+                                <ui-select-choices repeat="client as client in (delayedClients | filter: $select.search | limitTo: 50)" refresh="realResults($select.search)" refresh-delay="0">
+                                    <span ng-bind="client.name + ' - ' + client.code + ' - ' + client.americanCity"></span>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="height:16px;"></div>
+            </div>
+
+            <div ng-if="addressBooks != null && addressBooks.length >= 1 && user.selectedClient">
+                <label>Address Book:</label>
+                <div class="single-address">
+                    <div class="address-payload">
+                        <div class="address-component">
+                            <select class="data-input" ng-model="user.selectedAddressBook"
+                                    ng-options="addressBook as ((addressBook.code ? addressBook.code + ' - ' : '') + addressBook.deliverTo) for addressBook in addressBooks | orderBy: 'code'">
+                                <option value="" selected>--- None Selected ---</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="height:16px;"></div>
+                </div>
+            </div>
+
+            <div ng-if="addressBooks != null && addressBooks.length >= 1">
+                <button style="width:100%" ng-disabled="!user.selectedClient || user.selectedAddressBook" ng-click="setStep('edit')"><b>Create New Address Book</b></button>
+                <button style="width:100%;margin-top:7px;" ng-disabled="user.selectedClient && !user.selectedAddressBook" ng-click="copyAddressBook()"><b>Copy Selected Address Book</b></button>
+            </div>
+            <div ng-if="addressBooks != null && addressBooks.length == 0 && user.selectedClient">
+                <label>Address Book is not enabled for this client.</label>
+            </div>
+        </div>
+
+        <button class="confirm-button" ng-disabled="!user.selectedAddressBook" ng-class="{'disabled-Button': !user.selectedAddressBook}" ng-click="editAddressBook()">Edit Address Book</button>
+    </div>
+
+    <div class="desktop-panel" ng-if="step == 'edit' && saveInProgress != true">
+        <div>
+            <div class="back-bar">
+                <div class="back-button" title="Change selected client or address book" ng-click="addressBookBack()">
+                    <i class="fas fa-arrow-left"></i>
+                </div>
+                <h2 style="align-self:center; padding-top:7px;">{{user.selectedAddressBook.id ? 'Edit' : (copy ? 'Copy' : 'Add')}} {{user.selectedAddressBook.name}}</h2>
+                <div class="back-button-disabled" ng-if="!user.selectedAddressBook.id"></div>
+                <div class="clear-button-saved" title="Delete this address" ng-if="user.selectedAddressBook.id" ng-click="deleteAddressBook()">
+                    <i class="fas fa-trash"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group fixed-height">
+            <label class="control-label col-sm-12">Address Book Code:</label>
+            <div class="col-sm-12 pad-bottom">
+                <input class="form-control" maxlength="100" ng-model="user.selectedAddressBook.code" />
+            </div>
+        </div>
+
+        <div class="form-group fixed-height">
+            <div>
+                <label class="control-label col-sm-4">Search Address:</label>
+                <div style="text-align:center">
+                    <input type="radio" id="google" name="entryType" ng-value="1" ng-model="user.entryType">
+                    <label for="pickup" class="radio-label">Google Maps</label>
+                    <input type="radio" id="free" name="entryType" ng-value="2" ng-model="user.entryType">
+                    <label for="deliver" class="radio-label">Free Entry</label>
+                </div>
+            </div>
+            <div class="col-sm-12 pad-bottom">
+                <input class="form-control" maxlength="500" id="gpsSearch" ng-map-autocomplete options='autocompleteOptions' ng-model-options='{"debounce": 1000}'
+                       ng-disabled="user.entryType === 2" ng-readonly="user.entryType === 2"
+                       ng-model="user.selectedAddressBook.address" ng-change="checkEmpty()" details="user.selectedAddressBook.addressDetails" placeholder="Search address or business name..." />
+            </div>
+        </div>
+
+        <div class="form-group fixed-height">
+            <label class="control-label col-sm-12">Street Address:</label>
+            <div class="col-sm-12 pad-bottom">
+                <input class="form-control" maxlength="500" ng-disabled="user.entryType === 1" ng-readonly="user.entryType === 1" ng-model="user.selectedAddressBook.addressStreetName" />
+            </div>
+        </div>
+
+        <div ng-if="countryCode != 'NZ'">
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">City:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="200" ng-disabled="user.entryType === 1" ng-readonly="user.entryType === 1" ng-model="user.selectedAddressBook.addressLine5" />
+                </div>
+            </div>
+
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">State:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="200" ng-disabled="user.entryType === 1" ng-readonly="user.entryType === 1" ng-model="user.selectedAddressBook.addressLine6" />
+                </div>
+            </div>
+        </div>
+
+        <div ng-if="countryCode == 'NZ'">
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-12">Suburb:</label>
+                <div class="col-sm-12 pad-bottom">
+                    <select class="form-control" ng-disabled="user.entryType === 1" ng-readonly="user.entryType === 1" ng-model="user.selectedAddressBook.toSuburbId" ng-options="suburb.id as suburb.name for suburb in suburbs">
+                        <option value="" disabled selected hidden>Select a suburb...</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group fixed-height">
+            <label class="control-label col-sm-12">Post Code:</label>
+            <div class="col-sm-12 pad-bottom">
+                <input class="form-control" maxlength="5" ng-model="user.selectedAddressBook.postCode" />
+            </div>
+        </div>
+
+        <div class="form-group fixed-height">
+            <label class="control-label col-sm-12">Company Name:</label>
+            <div class="col-sm-12 pad-bottom">
+                <input class="form-control" maxlength="500" ng-model="user.selectedAddressBook.addressCompanyName" />
+            </div>
+        </div>
+
+        <div class="form-group fixed-height">
+            <label class="control-label col-sm-12">Address Extras:</label>
+            <div class="col-sm-12 pad-bottom">
+                <input class="form-control" maxlength="200" ng-model="user.selectedAddressBook.addressExtras" />
+            </div>
+        </div>
+
+        <div class="form-group fixed-height">
+            <label class="control-label col-sm-12">Address Extras 2:</label>
+            <div class="col-sm-12 pad-bottom">
+                <input class="form-control" maxlength="200" ng-model="user.selectedAddressBook.addressExtras2" />
+            </div>
+        </div>
+
+        <div>
+            <div class="alert alert-danger error" role="alert" style="margin-bottom:0px" ng-show="user.errors.length > 0">
+                <div ng-repeat="error in user.errors track by $index">{{error}}</div>
+            </div>
+
+            <!-- Need to check if errythang is valid before updating -->
+            <button class="confirm-button" ng-disabled="false" ng-class="{'disabled-Button': false}" ng-click="checkFormData()">Save Changes</button>
+        </div>
+    </div>
+</div>

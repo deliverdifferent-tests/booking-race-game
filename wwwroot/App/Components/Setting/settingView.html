@@ -1,0 +1,68 @@
+﻿<div id="desktop-view">
+
+    <!--Main panel-->
+
+    <div class="desktop-panel" ng-if="step == 'select'">
+
+        <div class="back-bar">
+            <div class="back-button-disabled"></div>
+            <h2 style="align-self:center; padding-top:7px;">Settings</h2>
+            <div class="back-button-disabled"></div>
+        </div>
+
+        <div class="dash-boxes container-fluid" style="padding-bottom:10px;">
+            <div class="row">
+                <div class="col-sm-4" ng-if="countryCode == 'NZ'">
+                    <div class="dash-box icon" style="border-radius:24px" ui-sref="addressBook">
+                        <i class="fas fa-book"></i>
+                        <div class="text">Address Book</div>
+                    </div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="dash-box icon" style="border-radius:24px" ui-sref="client">
+                        <i class="fas fa-cogs"></i>
+                        <div class="text">Client Settings</div>
+                    </div>
+                </div>
+                <div class="col-sm-4" ng-if="countryCode == 'NZ'">
+                    <div class="dash-box icon" style="border-radius:24px" ui-sref="stripe">
+                        <i class="fas fa-credit-card"></i>
+                        <div class="text">Credit Card</div>
+                    </div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="dash-box icon" style="border-radius:24px" ui-sref="dimension">
+                        <i class="fas fa-boxes"></i>
+                        <div class="text">Dimensions</div>
+                    </div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="dash-box icon" style="border-radius:24px" ui-sref="invoice">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                        <div class="text">Invoices</div>
+                    </div>
+                </div>
+                <div class="col-sm-4" ng-if="countryCode == 'NZ'">
+                    <div class="dash-box icon" style="border-radius:24px" ui-sref="report">
+                        <i class="fas fa-file-pdf"></i>
+                        <div class="text">Reports</div>
+                    </div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="dash-box icon" style="border-radius:24px" ui-sref="savedBooking">
+                        <i class="fas fa-save"></i>
+                        <div class="text">Saved Bookings</div>
+                    </div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="dash-box icon" style="border-radius:24px" ui-sref="contact">
+                        <i class="fas fa-user"></i>
+                        <div class="text">Users</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button class="confirm-button" ng-disabled="true" ng-class="{'disabled-Button': true}">...</button>
+    </div>
+</div>

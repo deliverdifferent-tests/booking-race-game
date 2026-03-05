@@ -1,0 +1,71 @@
+﻿<div id="desktop-view">
+
+    <!--Loading screen for main panel-->
+
+    <div class="desktop-panel" ng-if="!clients || reportsLoading == true">
+        <div></div>
+        <div class="loading-panel">
+            <div class="icon">
+                <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+            </div>
+        </div>
+        <div></div>
+    </div>
+
+    <!--Main panel-->
+
+    <div class="desktop-panel" ng-if="clients && step == 'select'">
+
+        <div class="back-bar">
+            <div class="back-button" title="Return to the previous page" onclick="window.history.back();">
+                <i class="fas fa-arrow-left"></i>
+            </div>
+            <h2 style="align-self:center; padding-top:7px;">Credit Card</h2>
+            <div class="back-button-disabled"></div>
+        </div>
+
+        <div style="align-self:center; width:40%;">
+            <div ng-if="clients.length > 1 || !user.internal">
+                <label>Client:</label>
+                <div class="single-address">
+                    <div class="address-payload">
+                        <div class="address-component">
+                            <select class="data-input" ng-model="user.selectedClient" ng-options="client as client.name for client in clients">
+                                <option value="" disabled selected hidden>Select a client...</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="height:16px;"></div>
+
+            <div ng-if="user.internal">
+                <label>Client Search:</label>
+                <div class="single-address">
+                    <div class="address-payload">
+                        <div class="address-component">
+                            <ui-select ng-model="user.selectedClient"
+                                       ng-change="getThisClient()"
+                                       skip-focusser="true"
+                                       style="width:100%">
+                                <ui-select-match placeholder="Search for a client...">
+                                    <span ng-bind="$select.selected.name + ' - ' + $select.selected.code + ' - ' + $select.selected.americanCity"></span>
+                                </ui-select-match>
+                                <ui-select-choices repeat="client as client in (delayedClients | filter: $select.search | limitTo: 50)" refresh="realResults($select.search)" refresh-delay="0">
+                                    <span ng-bind="client.name + ' - ' + client.code + ' - ' + client.americanCity"></span>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div ng-if="!user.selectedClient.stripeClient" style="text-align:center;padding-top:15px;">
+                <label>Sorry, you are not set up as a Credit Card client!</label>
+            </div>
+        </div>
+
+        <button class="confirm-button" ng-disabled="!user.selectedClient.stripeClient" ng-class="{'disabled-Button': !user.selectedClient.stripeClient}" ng-click="getStripePortal()">Access Credit Card Portal</button>
+    </div>
+</div>

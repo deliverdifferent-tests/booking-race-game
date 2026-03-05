@@ -1,0 +1,375 @@
+﻿<div id="desktop-view">
+
+    <!--Loading screen for main panel-->
+
+    <div class="desktop-panel" ng-if="!clients || saveInProgress == true">
+        <div></div>
+        <div class="loading-panel">
+            <div class="icon">
+                <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+            </div>
+        </div>
+        <div></div>
+    </div>
+
+    <!--Main panel-->
+
+    <div class="desktop-panel" ng-if="clients && step == 'select'">
+
+        <div class="back-bar">
+            <div class="back-button" title="Return to the previous page" onclick="window.history.back();">
+                <i class="fas fa-arrow-left"></i>
+            </div>
+            <h2 style="align-self:center; padding-top:7px;">Saved Bookings</h2>
+            <div class="back-button-disabled"></div>
+        </div>
+
+        <div style="align-self:center; width:40%;">
+            <div ng-if="clients.length > 1 || !user.internal">
+                <label>Client:</label>
+                <div class="single-address">
+                    <div class="address-payload">
+                        <div class="address-component">
+                            <select class="data-input" ng-model="user.selectedClient" ng-change="getSavedJobs()" ng-options="client as client.name for client in clients">
+                                <option value="" disabled selected hidden>Select a client...</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="height:16px;"></div>
+            </div>
+
+            <div ng-if="user.internal">
+                <label>Client Search:</label>
+                <div class="single-address">
+                    <div class="address-payload">
+                        <div class="address-component">
+                            <ui-select ng-model="user.selectedClient"
+                                       ng-change="getSavedJobs()"
+                                       skip-focusser="true"
+                                       style="width:100%">
+                                <ui-select-match placeholder="Search for a client...">
+                                    <span ng-bind="$select.selected.name + ' - ' + $select.selected.code + ' - ' + $select.selected.americanCity"></span>
+                                </ui-select-match>
+                                <ui-select-choices repeat="client as client in (delayedClients | filter: $select.search | limitTo: 50)" refresh="realResults($select.search)" refresh-delay="0">
+                                    <span ng-bind="client.name + ' - ' + client.code + ' - ' + client.americanCity"></span>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="height:16px;"></div>
+            </div>
+
+            <label ng-if="savedJobs != null && savedJobs.length >= 1 && user.selectedClient">Saved Booking:</label>
+            <div class="single-address" ng-disabled="savedJobs == null || savedJobs.length == 0 || !user.selectedClient">
+                <div class="address-payload">
+                    <div class="address-component">
+                        <select class="data-input" ng-model="user.selectedSavedBooking" ng-options="savedJob as savedJob.name for savedJob in savedJobs">
+                            <option value="" selected>--- None Selected ---</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="height:16px;"></div>
+            </div>
+
+            <button style="width:100%" ng-disabled="!user.selectedClient || user.selectedSavedBooking" ng-click="setStep('edit')"><b>Create New Saved Booking</b></button>
+            <button style="width:100%;margin-top:7px;" ng-disabled="user.selectedClient && !user.selectedSavedBooking" ng-click="copySavedBooking()"><b>Copy Selected Saved Booking</b></button>
+        </div>
+
+        <button class="confirm-button" ng-disabled="!user.selectedSavedBooking" ng-class="{'disabled-Button': !user.selectedSavedBooking}" ng-click="editSavedBooking()">Edit Saved Booking</button>
+    </div>
+
+    <div class="desktop-panel" ng-if="step == 'edit' && saveInProgress != true">
+        <div>
+            <div class="back-bar">
+                <div class="back-button" title="Change selected client or saved booking" ng-click="savedBookingBack()">
+                    <i class="fas fa-arrow-left"></i>
+                </div>
+                <h2 style="align-self:center; padding-top:7px;">{{user.selectedSavedBooking.id ? 'Edit' : (copy ? 'Copy' : 'Add')}} {{user.selectedSavedBooking.name}}</h2>
+                <div class="back-button-disabled" ng-if="!user.selectedSavedBooking.id"></div>
+                <div class="clear-button-saved" title="Delete this saved booking" ng-if="user.selectedSavedBooking.id" ng-click="deleteSavedBooking()">
+                    <i class="fas fa-trash"></i>
+                </div>
+            </div>
+
+            <div style="display:flex;flex-direction:row;justify-content:space-between;">
+                <div class="savedBooking-buttons" ng-class="{selected: page == 'address'}" ng-click="setPage('address')">Address</div>
+                <div class="savedBooking-buttons" ng-class="{selected: page == 'dgSpeed'}" ng-click="setPage('dgSpeed')">DG/Service</div>
+                <div class="savedBooking-buttons" ng-class="{selected: page == 'truck'}" ng-click="setPage('truck')">Vehicle/Quantity</div>
+                <div class="savedBooking-buttons" ng-class="{selected: page == 'proofOfDelivery'}" ng-click="setPage('proofOfDelivery')">Proof of Delivery</div>
+                <div class="savedBooking-buttons" ng-class="{selected: page == 'refNotes'}" ng-click="setPage('refNotes')">References/Notes</div>
+            </div>
+        </div>
+
+        <div ng-if="page == 'address'">
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-12">Saved Booking Name (*):</label>
+                <div class="col-sm-12 pad-bottom">
+                    <input class="form-control" maxlength="150" ng-model="user.selectedSavedBooking.name" />
+                </div>
+            </div>
+
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">From Company Name:</label>
+                <label class="control-label col-sm-6">To Company Name:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="150" ng-model="user.selectedSavedBooking.americanFromCompany" />
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="150" ng-model="user.selectedSavedBooking.americanToCompany" />
+                </div>
+            </div>
+
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">From Extra Info:</label>
+                <label class="control-label col-sm-6">To Extra Info:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="200" ng-model="user.selectedSavedBooking.americanFromExtras" />
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="200" ng-model="user.selectedSavedBooking.americanToExtras" />
+                </div>
+            </div>
+
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">From Street Address:</label>
+                <label class="control-label col-sm-6">To Street Address:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="200" ng-model="user.selectedSavedBooking.fromAddressStreetName" />
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="200" ng-model="user.selectedSavedBooking.toAddressStreetName" />
+                </div>
+            </div>
+
+            <div ng-if="countryCode != 'NZ'">
+                <div class="form-group fixed-height">
+                    <label class="control-label col-sm-6">From City:</label>
+                    <label class="control-label col-sm-6">To City:</label>
+                    <div class="col-sm-6 pad-bottom">
+                        <input class="form-control" maxlength="200" ng-model="user.selectedSavedBooking.americanFromCity" />
+                    </div>
+                    <div class="col-sm-6 pad-bottom">
+                        <input class="form-control" maxlength="200" ng-model="user.selectedSavedBooking.americanToCity" />
+                    </div>
+                </div>
+
+                <div class="form-group fixed-height">
+                    <label class="control-label col-sm-6">From State:</label>
+                    <label class="control-label col-sm-6">To State:</label>
+                    <div class="col-sm-6 pad-bottom">
+                        <input class="form-control" maxlength="200" ng-model="user.selectedSavedBooking.americanFromState" />
+                    </div>
+                    <div class="col-sm-6 pad-bottom">
+                        <input class="form-control" maxlength="200" ng-model="user.selectedSavedBooking.americanToState" />
+                    </div>
+                </div>
+            </div>
+
+            <div ng-if="countryCode == 'NZ'">
+                <div class="form-group fixed-height">
+                    <label class="control-label col-sm-6">From Suburb:</label>
+                    <label class="control-label col-sm-6">To Suburb:</label>
+                    <div class="col-sm-6 pad-bottom">
+                        <select class="form-control" ng-model="user.selectedSavedBooking.fromSuburbId" ng-options="suburb.id as suburb.name for suburb in suburbs">
+                            <option value="" disabled selected hidden>Select a suburb...</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-6 pad-bottom">
+                        <select class="form-control" ng-model="user.selectedSavedBooking.toSuburbId" ng-options="suburb.id as suburb.name for suburb in suburbs">
+                            <option value="" disabled selected hidden>Select a suburb...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">From Contact:</label>
+                <label class="control-label col-sm-6">To Contact:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="100" ng-model="user.selectedSavedBooking.fromContact" />
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="100" ng-model="user.selectedSavedBooking.toContact" />
+                </div>
+            </div>
+
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">From Phone:</label>
+                <label class="control-label col-sm-6">To Phone:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="100" ng-model="user.selectedSavedBooking.fromPhone" />
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="100" ng-model="user.selectedSavedBooking.toPhone" />
+                </div>
+            </div>
+        </div>
+
+        <div ng-if="page == 'dgSpeed'">
+            <div class="form-group fixed-height-checkbox">
+                <label class="control-label col-sm-6">Dangerous Goods:</label>
+                <label class="control-label col-sm-6">Dangerous Goods Docs:</label>
+                <div class="col-sm-6 pad-bottom form-check">
+                    <input class="form-check-input" type="checkbox" ng-model="user.dg" />
+                </div>
+                <div class="col-sm-6 pad-bottom form-check">
+                    <input class="form-check-input" type="checkbox" ng-disabled="!user.dg" ng-model="user.selectedSavedBooking.dgDocument" />
+                </div>
+            </div>
+
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">Dangerous Goods Class:</label>
+                <label class="control-label col-sm-6">Service:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <select class="form-control" ng-disabled="!user.dg" ng-model="user.selectedSavedBooking.dgClass" ng-options="dangerousGoodsClass.value as dangerousGoodsClass.value for dangerousGoodsClass in dangerousGoodsClasses">
+                        <option value="" disabled selected hidden>Select a DG class...</option>
+                    </select>
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <select class="form-control" ng-model="user.selectedSavedBooking.speed" ng-options="speed.id as speed.name for speed in speeds">
+                        <option value="" selected>--- None Selected ---</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">Booking Time:</label>
+                <label class="control-label col-sm-6">Reset Booking Time:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <input type="time" class="form-control" ng-model="user.selectedSavedBooking.bookingTime" />
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <button style="width:100%" ng-click="user.selectedSavedBooking.bookingTime = null">Reset Booking Time</button>
+                </div>
+            </div>
+        </div>
+
+        <div ng-if="page == 'truck'">
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">Vehicle Type:</label>
+                <label class="control-label col-sm-6">Quantity:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <select class="form-control" ng-model="user.selectedSavedBooking.size" ng-disabled="user.selectedSavedBooking.truck" ng-options="vehicleSize.id as vehicleSize.name for vehicleSize in vehicleSizes">
+                        <option value="" selected>--- None Selected ---</option>
+                    </select>
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" ng-change="intQuantity()" ng-model="user.selectedSavedBooking.quantity" />
+                </div>
+            </div>
+
+            <div class="form-group fixed-height-checkbox">
+                <label class="control-label col-sm-6">Truck:</label>
+                <label class="control-label col-sm-6">Truck Taillift (Pickup):</label>
+                <div class="col-sm-6 pad-bottom form-check">
+                    <input class="form-check-input" type="checkbox" ng-disabled="user.selectedSavedBooking.size" ng-model="user.selectedSavedBooking.truck" />
+                </div>
+                <div class="col-sm-6 pad-bottom form-check">
+                    <input class="form-check-input" type="checkbox" ng-disabled="!user.selectedSavedBooking.truck" ng-model="user.selectedSavedBooking.truckTailliftPU" />
+                </div>
+            </div>
+
+            <div class="form-group fixed-height-checkbox">
+                <label class="control-label col-sm-6">Truck Taillift (Dropoff):</label>
+                <label class="control-label col-sm-6">Truck Private Residence:</label>
+                <div class="col-sm-6 pad-bottom form-check">
+                    <input class="form-check-input" type="checkbox" ng-disabled="!user.selectedSavedBooking.truck" ng-model="user.selectedSavedBooking.truckTailliftDO" />
+                </div>
+                <div class="col-sm-6 pad-bottom form-check">
+                    <input class="form-check-input" type="checkbox" ng-disabled="!user.selectedSavedBooking.truck" ng-model="user.selectedSavedBooking.truckPrivateResidence" />
+                </div>
+            </div>
+
+            <!--<div class="form-group fixed-height">
+                <label class="control-label col-sm-6">Package Size:</label>
+                <label class="control-label col-sm-6">Quantity:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <select class="form-control" ng-model="user.selectedSavedBooking.size" ng-options="stockSize.id as stockSize.name for stockSize in user.selectedClient.stockSizes">
+                        <option value="" selected>--- None Selected ---</option>
+                    </select>
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" ng-change="intQuantity()" ng-model="user.selectedSavedBooking.quantity" />
+                </div>
+            </div>-->
+        </div>
+
+        <div ng-if="page == 'proofOfDelivery'">
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">Tracking:</label>
+                <label class="control-label col-sm-6">Tracking Email:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <select class="form-control" ng-model="user.selectedSavedBooking.proofOfDelivery" ng-options="proofOfDelivery.value as proofOfDelivery.name for proofOfDelivery in proofOfDeliveries">
+                        <option value="" selected>Web Site</option>
+                    </select>
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="100" ng-model="user.selectedSavedBooking.podEmail" />
+                </div>
+            </div>
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-12">Tracking Phone:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="100" ng-model="user.selectedSavedBooking.podMobile" />
+                </div>
+            </div>
+        </div>
+
+        <div ng-if="page == 'refNotes'">
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">Client Reference A:</label>
+                <label class="control-label col-sm-6">Client Reference B:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="20" ng-model="user.selectedSavedBooking.clientRefA" />
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="15" ng-model="user.selectedSavedBooking.clientRefB" />
+                </div>
+            </div>
+
+            <div class="form-group fixed-height-textarea">
+                <label class="control-label col-sm-12">Client Notes:</label>
+                <div class="col-sm-12 pad-bottom">
+                    <textarea rows="2" maxlength="500" class="form-control" ng-model="user.selectedSavedBooking.clientNotes" />
+                </div>
+            </div>
+
+            <div class="form-group fixed-height-textarea">
+                <label class="control-label col-sm-12">Pickup Notes:</label>
+                <div class="col-sm-12 pad-bottom">
+                    <textarea rows="2" maxlength="1000" class="form-control" ng-model="user.selectedSavedBooking.fromAddressExtras2" />
+                </div>
+            </div>
+
+            <div class="form-group fixed-height-textarea">
+                <label class="control-label col-sm-12">Delivery Notes:</label>
+                <div class="col-sm-12 pad-bottom">
+                    <textarea rows="2" maxlength="1000" class="form-control" ng-model="user.selectedSavedBooking.toAddressExtras2" />
+                </div>
+            </div>
+
+            <div class="form-group fixed-height" ng-if="user.selectedClient.id === 9673"> <!--Only for Asure-->
+                <label class="control-label col-sm-12">Contact:</label>
+                <div class="col-sm-12 pad-bottom">
+                    <select class="form-control" ng-model="user.selectedSavedBooking.contactId" ng-options="contact.id as (contact.name + (contact.jobTitle ? ' - ' + contact.jobTitle : '')) for contact in contacts">
+                        <option value="" disabled selected hidden>--- None Selected ---</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="alert alert-danger error" role="alert" style="margin-bottom:0px" ng-show="user.errors.length > 0">
+                <div ng-repeat="error in user.errors track by $index">{{error}}</div>
+            </div>
+
+            <!-- Need to check if errythang is valid before updating -->
+            <button class="confirm-button" ng-disabled="false" ng-class="{'disabled-Button': false}" ng-click="checkFormData()">Save Changes</button>
+        </div>
+    </div>
+</div>

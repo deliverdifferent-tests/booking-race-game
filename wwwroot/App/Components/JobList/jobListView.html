@@ -1,0 +1,1263 @@
+﻿<div id="desktop-view">
+
+    <!--Loading screen for main panel-->
+
+    <div class="desktop-panel" ng-if="!clients || jobsLoading == true || updateJobInProgress == true">
+        <div></div>
+        <div class="loading-panel">
+            <div class="icon">
+                <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+            </div>
+        </div>
+        <div></div>
+    </div>
+
+    <!--Main panel-->
+
+    <div class="desktop-panel" ng-if="clients && step == 'select'">
+
+        <div class="back-bar">
+            <div class="back-button-disabled"></div>
+            <h2 style="align-self:center; padding-top:7px;">Job List</h2>
+            <div class="back-button-disabled"></div>
+        </div>
+
+        <div style="align-self:center; width:40%;">
+            <div ng-if="clients.length > 1 || !user.internal">
+                <label>Client:</label>
+                <div class="single-address">
+                    <div class="address-payload">
+                        <div class="address-component">
+                            <select class="data-input" ng-model="user.selectedClient" ng-options="client as client.name for client in clients">
+                                <option value="" disabled selected hidden>Select a client...</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="height:16px;"></div>
+
+            <div ng-if="user.internal">
+                <label>Client Search:</label>
+                <div class="single-address">
+                    <div class="address-payload">
+                        <div class="address-component">
+                            <ui-select ng-model="user.selectedClient"
+                                       ng-change="getThisClient()"
+                                       skip-focusser="true"
+                                       style="width:100%">
+                                <ui-select-match placeholder="Search for a client...">
+                                    <span ng-bind="$select.selected.name + ' - ' + $select.selected.code + ' - ' + $select.selected.americanCity"></span>
+                                </ui-select-match>
+                                <ui-select-choices repeat="client as client in (delayedClients | filter: $select.search | limitTo: 50)" refresh="realResults($select.search)" refresh-delay="0">
+                                    <span ng-bind="client.name + ' - ' + client.code + ' - ' + client.americanCity"></span>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button class="confirm-button" ng-disabled="!user.selectedClient" ng-class="{'disabled-Button': !user.selectedClient}" ng-click="viewJobList()">View Job List</button>
+    </div>
+
+    <!--Job List Page-->
+
+    <div class="desktop-panel" ng-if="step == 'jobList' && jobsLoading != true">
+        <div>
+            <div class="back-bar">
+                <div style="display:flex;">
+                    <div class="back-button" title="Change selected client" ng-click="jobListBack()">
+                        <i class="fas fa-arrow-left"></i>
+                    </div>
+                    <div style="width:221px;"></div>
+                </div>
+                <h2 style="align-self:center; padding-top:7px;">Job List</h2>
+                <div style="display:flex;">
+                    <div style="align-self:center;">
+                        <label style="padding-right:6px;">Jobs per Page:</label>
+                        <input style="width:50px;" type="number" step="1" ng-model="user.tempJobsPerPage" ng-blur="setJobsPerPage()" ng-keydown="onSearchKeyDown($event)" />
+                    </div>
+                    <div class="clear-button-saved" style="border-radius:0px;" title="Download these jobs as a csv file" ng-click="downloadJobs()">
+                        <i class="fas fa-download"></i>
+                    </div>
+                    <div class="clear-button-saved" style="border-radius:0px;" title="Refresh the job list" ng-click="getFilteredJobs()">
+                        <i class="fas fa-redo"></i>
+                    </div>
+                    <div class="clear-button-saved" title="Add a filter to show specified jobs" ng-click="openFilterModal()">
+                        <i class="fas fa-filter"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-center-dimensions" ng-if="jobs.length > 0">
+            <table class="table-container-dimensions" style="width:90%" ng-init="orderBy = ['-date', '-timeHours']">
+                <thead>
+                    <tr>
+                        <th class="table-title-dimensions" style="width:10%" ng-click="orderBy = orderBy === 'date' ? '-date' : 'date'">Date/Time</th>
+                        <th class="table-title-dimensions" style="width:10%" ng-click="orderBy = orderBy === 'bookedBy' ? '-bookedBy' : 'bookedBy'">Booked By</th>
+                        <th class="table-title-dimensions" style="width:10%" ng-click="orderBy = orderBy === 'clientRefA' ? '-clientRefA' : 'clientRefA'">Reference</th>
+                        <th class="table-title-dimensions" style="width:10%" ng-click="orderBy = orderBy === 'jobNumber' ? '-jobNumber' : 'jobNumber'">Job Number</th>
+                        <th class="table-title-dimensions" style="width:10%" ng-click="orderBy = orderBy === 'fromAddress' ? '-fromAddress' : 'fromAddress'">From</th>
+                        <th class="table-title-dimensions" style="width:10%" ng-click="orderBy = orderBy === 'toAddress' ? '-toAddress' : 'toAddress'">To</th>
+                        <th class="table-title-dimensions" style="width:10%" ng-click="orderBy = orderBy === 'speedId' ? '-speedId' : 'speedId'">Service</th>
+                        <th class="table-title-dimensions" style="width:10%" ng-click="orderBy = orderBy === 'courierId' ? '-courierId' : 'courierId'">Courier/Vehicle</th>
+                        <th class="table-title-dimensions" style="width:10%" ng-click="orderBy = orderBy === 'quantity' ? '-quantity' : 'quantity'">Qty/Weight</th>
+                        <th class="table-title-dimensions" style="width:5%" ng-click="orderBy = orderBy === 'amount' ? '-amount' : 'amount'">Price</th>
+                        <th class="table-title-dimensions" style="width:5%"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr dir-paginate="job in jobs | orderBy:orderBy | itemsPerPage: user.jobsPerPage track by job.id+job.jobNumber" ng-style="{ 'background-color': (job.onHold ? '#FFDBBB' : 'white') }">
+                        <td class="table-content-dimensions">
+                            {{job.onHold ? 'On Hold' : job.date | date: countryCode == 'NZ' ? 'dd/MM/yyyy' : 'MM/dd/yyyy'}}<br />
+                            {{job.onHold ? '' : job.timeHours + (job.timeZone ? ' ' + job.timeZone : '')}}
+                        </td>
+                        <td class="table-content-dimensions">{{job.bookedBy}}</td>
+                        <td class="table-content-dimensions">
+                            {{job.clientRefA}}<br />
+                            {{job.clientRefB}}
+                        </td>
+                        <td class="table-content-dimensions">
+                            {{job.jobNumber}}<br />
+                            {{job.undeliverableLocation ? getLocationName(job.undeliverableLocation) : (job.status && job.speedId ? getStatusName(job.status, job.speedId) : null)}}
+                        </td>
+                        <td class="table-content-dimensions">
+                            {{job.fromAddress.substring(0, 30)}}<br />
+                            {{job.americanFromCity}}
+                        </td>
+                        <td class="table-content-dimensions">
+                            {{job.toAddress.substring(0, 30)}}<br />
+                            {{job.americanToCity}}
+                        </td>
+                        <td class="table-content-dimensions">{{job.speedId ? getSpeedName(job.speedId) : null}}</td>
+                        <td class="table-content-dimensions">
+                            {{job.courierId ? getCourierString(job.courierId) : 'Not assigned'}}<br />
+                            {{job.vehicleSize ? getSizeName(job.vehicleSize) : null}}
+                        </td>
+                        <td class="table-content-dimensions">
+                            {{job.quantity}} Item{{job.quantity <= 1 ? '' : 's'}}<br />
+                            {{job.weight}} {{weightUnit.toUpperCase()}}{{job.weight <= 1 ? '' : 's'}}
+                        </td>
+                        <td class="table-content-dimensions">${{job.amount.toFixed(2)}}</td>
+                        <td class="table-content-dimensions" ng-if="!job.onHold">
+                            <i class="fas fa-edit" ng-click="editJob(job)"></i>
+                            <a ng-if="job.status === 6" ng-href="API/PodReport/{{job.id}}" target="_blank" title="Download POD PDF"><i class="fas fa-file-pdf"></i></a>
+                            <a ng-if="job.status === 6" ng-href="API/PodReport/Spreadsheet/{{job.id}}" target="_blank" title="Download POD Excel"><i class="fas fa-file-excel"></i></a>
+                            <i ng-if="job.status === 6" class="fas fa-envelope" ng-click="openSendPodModal(job)" title="Email POD"></i>
+                        </td>
+                        <td class="table-content-dimensions" ng-if="job.onHold">
+                            <a href="" ng-click="openReadyModal(job)">Ready</a>
+                            <div style="padding-top:6px;"></div>
+                            <a href="" ng-click="openCancelModal(job)">Cancel</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div ng-if="jobs.length === 0" style="text-align:center;">
+            <label style="text-align:center;">
+                No jobs found!<br />
+                Check your filters (top right) and try again.
+            </label>
+        </div>
+
+        <div>
+            <div class="pagination-bar">
+                <dir-pagination-controls on-page-change="pageChanged(newPageNumber)" class="absolute-pagination" ng-if="jobs.length > 0"></dir-pagination-controls>
+            </div>
+        </div>
+    </div>
+
+    <!--Edit Job Page-->
+
+    <div class="desktop-panel" ng-if="step == 'edit' && jobsLoading != true && updateJobInProgress != true">
+        <div>
+            <div class="back-bar">
+                <div class="back-button" title="Return to job list" ng-click="editBack()">
+                    <i class="fas fa-arrow-left"></i>
+                </div>
+                <h2 style="align-self:center; padding-top:7px;">Update Job - {{selectedJob.jobNumber}}</h2>
+                <div class="clear-button-saved" title="Refresh this job" ng-click="getThisJob()">
+                    <i class="fas fa-redo"></i>
+                </div>
+            </div>
+
+            <div style="display:flex;flex-direction:row;justify-content:space-between;">
+                <div class="savedBooking-buttons" style="width:25%" ng-class="{selected: page == 'address'}" ng-click="setPage('address')">Address</div>
+                <div class="savedBooking-buttons" style="width:25%" ng-class="{selected: page == 'additional'}" ng-click="setPage('additional')">Additional Info</div>
+                <div class="savedBooking-buttons" style="width:25%" ng-class="{selected: page == 'jobItems'}" ng-if="selectedJob.jobItems !== null" ng-click="setPage('jobItems')">Job Items</div>
+                <div class="savedBooking-buttons" style="width:25%" ng-class="{selected: page == 'accessorials'}" ng-if="selectedJob.accessorialChargeGroupId" ng-click="setPage('accessorials')">Accessorials</div>
+                <div class="savedBooking-buttons" style="width:25%" ng-class="{selected: page == 'jobStatusScans'}" ng-if="jobStatusScans !== null && jobStatusScans.length > 0" ng-click="setPage('jobStatusScans')">Job Status</div>
+                <div class="savedBooking-buttons" style="width:25%" ng-class="{selected: page == 'speedPrice'}" ng-click="setPage('speedPrice')">{{permissions === 'Min' ? "Service/Price/POD" : "Service/Price"}}</div>
+                <div class="savedBooking-buttons" style="width:25%" ng-class="{selected: page == 'functions'}" ng-click="setPage('functions')">Functions</div>
+            </div>
+        </div>
+
+        <div ng-if="page === 'address'">
+            <div class="form-group radio-holder">
+                <input type="radio" id="pickup" name="deliveryType" ng-disabled="true" ng-value="1" ng-model="selectedJob.jobType">
+                <label for="pickup" class="radio-label">Pick up from us</label>
+                <input type="radio" id="deliver" name="deliveryType" ng-disabled="true" ng-value="2" ng-model="selectedJob.jobType">
+                <label for="deliver" class="radio-label">Deliver to us</label>
+                <input type="radio" id="third" name="deliveryType" ng-disabled="true" ng-value="3" ng-model="selectedJob.jobType">
+                <label for="third" class="radio-label">3rd party</label>
+            </div>
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">From Address: *</label>
+                <div>
+                    <label class="control-label col-sm-6" style="width:20%">To Address: *</label>
+                    <div style="text-align:center" ng-if="selectedJob.jobType !== 2 && permissions === 'Max'">
+                        <input type="radio" id="google" name="entryType" ng-value="1" ng-model="user.entryType">
+                        <label for="pickup" class="radio-label">Google Maps</label>
+                        <input type="radio" id="free" name="entryType" ng-value="2" ng-model="user.entryType">
+                        <label for="deliver" class="radio-label">Free Entry</label>
+                    </div>
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="150" ng-disabled="true" ng-readonly="true" ng-model="selectedJob.fromAddress" />
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="150" ng-disabled="selectedJob.jobType === 2 || permissions !== 'Max'" ng-readonly="selectedJob.jobType === 2 || permissions !== 'Max'" ng-if="user.entryType === 2" ng-model="selectedJob.toAddress" />
+
+                    <input class="form-control" maxlength="150" id="toBookingGpsSearch" ng-map-autocomplete options='autocompleteOptions' ng-model-options='{"debounce": 1000}'
+                           ng-disabled="selectedJob.jobType === 2 || permissions !== 'Max'" ng-readonly="selectedJob.jobType === 2 || permissions !== 'Max'" ng-if="user.entryType === 1"
+                           ng-model="selectedJob.toAddress" ng-change="checkEmpty('to')" details="selectedJob.toDetails" placeholder="Destination address or business name..." />
+                </div>
+            </div>
+            <div ng-if="countryCode != 'NZ'">
+                <div class="form-group fixed-height">
+                    <label class="control-label col-sm-6">From City: *</label>
+                    <label class="control-label col-sm-6">To City: *</label>
+                    <div class="col-sm-6 pad-bottom">
+                        <input class="form-control" ng-disabled="true" ng-readonly="true" ng-model="selectedJob.americanFromCity" />
+                    </div>
+                    <div class="col-sm-6 pad-bottom">
+                        <input class="form-control" ng-disabled="selectedJob.jobType === 2 || permissions !== 'Max' || user.entryType === 1" ng-readonly="selectedJob.jobType === 2 || permissions !== 'Max' || user.entryType === 1"
+                               ng-model="selectedJob.americanToCity" ng-blur="getUpdatedPrices()" />
+                    </div>
+                </div>
+                <div class="form-group fixed-height">
+                    <label class="control-label col-sm-6">From State: *</label>
+                    <label class="control-label col-sm-6">To State: *</label>
+                    <div class="col-sm-6 pad-bottom">
+                        <input class="form-control" ng-disabled="true" ng-readonly="true" ng-model="selectedJob.americanFromState" />
+                    </div>
+                    <div class="col-sm-6 pad-bottom">
+                        <input class="form-control" ng-disabled="selectedJob.jobType === 2 || permissions !== 'Max' || user.entryType === 1" ng-readonly="selectedJob.jobType === 2 || permissions !== 'Max' || user.entryType === 1"
+                               ng-model="selectedJob.americanToState" ng-blur="getUpdatedPrices()" />
+                    </div>
+                </div>
+            </div>
+            <div class="form-group fixed-height" ng-if="countryCode == 'NZ'">
+                <label class="control-label col-sm-6">From Suburb: *</label>
+                <label class="control-label col-sm-6">To Suburb: *</label>
+                <div class="col-sm-6 pad-bottom">
+                    <select class="form-control" ng-disabled="true" ng-readonly="true" ng-options="suburb.id as suburb.name for suburb in suburbs | filter: siteFilter" ng-model="selectedJob.fromAddressSuburbId" ng-blur="getUpdatedPrices()"></select>
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <ui-select ng-model="selectedJob.toAddressSuburbId"
+                               ng-blur="getUpdatedPrices()"
+                               ng-disabled="selectedJob.jobType === 2 || permissions !== 'Max' || user.entryType === 1"
+                               ng-readonly="selectedJob.jobType === 2 || permissions !== 'Max' || user.entryType === 1"
+                               skip-focusser="true"
+                               style="width: 100%; background-color: #fff; border: 1px solid #ced4da; border-radius: 0.25rem;">
+                        <ui-select-match placeholder="Search for a suburb...">
+                            <span ng-bind="$select.selected.name"></span>
+                        </ui-select-match>
+                        <ui-select-choices repeat="suburb.id as suburb in (suburbs | filter: siteFilter | filter: { name: $select.search })">
+                            <span ng-bind="suburb.name"></span>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">From Contact Name:</label>
+                <label class="control-label col-sm-6">To Contact Name:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="100" ng-disabled="permissions !== 'Max'" ng-readonly="permissions !== 'Max'" ng-model="selectedJob.fromContactName" />
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="100" ng-disabled="selectedJob.jobType === 2 || permissions === 'Min'" ng-readonly="selectedJob.jobType === 2 || permissions === 'Min'" ng-model="selectedJob.toContactName" />
+                </div>
+            </div>
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">From Phone Number:</label>
+                <label class="control-label col-sm-6">To Phone Number:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="100" ng-disabled="permissions !== 'Max'" ng-readonly="permissions !== 'Max'" ng-model="selectedJob.fromPhoneNumber" />
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="100" ng-disabled="selectedJob.jobType === 2 || permissions === 'Min'" ng-readonly="selectedJob.jobType === 2 || permissions === 'Min'" ng-model="selectedJob.toPhoneNumber" />
+                </div>
+            </div>
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">Ref A{{user.selectedClient.referenceAMessage != null ? " - " + user.selectedClient.referenceAMessage : ""}}: {{user.selectedClient.referenceAMandatory ? "*" : ""}}</label>
+                <label class="control-label col-sm-6">Ref B{{user.selectedClient.referenceBMessage != null ? " - " + user.selectedClient.referenceBMessage : ""}}: {{user.selectedClient.referenceBMandatory ? "*" : ""}}</label>
+                <div class="col-sm-6 pad-bottom">
+                    <select class="form-control" ng-if="user.selectedClient.referenceADefineList" ng-options="referenceA.name as referenceA.name for referenceA in referencesA" ng-model="selectedJob.clientRefA" ng-blur="getUpdatedPrices()">
+                        <option value="" ng-if="!user.selectedClient.referenceAMandatory" selected>--- None Selected ---</option>
+                    </select>
+                    <input class="form-control" maxlength="20" ng-if="!user.selectedClient.referenceADefineList" ng-model="selectedJob.clientRefA" ng-blur="getUpdatedPrices()" />
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <select class="form-control" ng-if="user.selectedClient.referenceBDefineList" ng-options="referenceB.name as referenceB.name for referenceB in referencesB" ng-model="selectedJob.clientRefB" ng-blur="getUpdatedPrices()">
+                        <option value="" ng-if="!user.selectedClient.referenceBMandatory" selected>--- None Selected ---</option>
+                    </select>
+                    <input class="form-control" maxlength="15" ng-if="!user.selectedClient.referenceBDefineList" ng-model="selectedJob.clientRefB" ng-blur="getUpdatedPrices()" />
+                </div>
+            </div>
+        </div>
+
+        <div ng-if="page === 'additional'">
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">Size: *</label>
+                <label class="control-label col-sm-6">Proof of Delivery: *</label>
+                <div class="col-sm-6 pad-bottom">
+                    <select class="form-control" ng-disabled="permissions !== 'Max'" ng-readonly="permissions !== 'Max'" ng-options="vehicleSize.id as vehicleSize.name for vehicleSize in vehicleSizes" ng-model="selectedJob.vehicleSize" ng-blur="getUpdatedPrices()"> </select>
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <select class="form-control" ng-disabled="permissions === 'Min'" ng-readonly="permissions === 'Min'" ng-options="proofOfDelivery.value as proofOfDelivery.name for proofOfDelivery in proofOfDeliveries" ng-model="selectedJob.proofOfDelivery">
+                        <option value="" selected>Web Site</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group fixed-height" ng-show="selectedJob.proofOfDelivery !== 0 && selectedJob.proofOfDelivery !== null">
+                <label class="control-label col-sm-6">Proof of Delivery Email: *</label>
+                <label class="control-label col-sm-6">Proof of Delivery Mobile: *</label>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="100" ng-disabled="permissions === 'Min' || selectedJob.proofOfDelivery === 2" ng-readonly="permissions === 'Min' || selectedJob.proofOfDelivery === 2" ng-model="selectedJob.podEmail" />
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="100" ng-disabled="permissions === 'Min' || selectedJob.proofOfDelivery === 1" ng-readonly="permissions === 'Min' || selectedJob.proofOfDelivery === 1" ng-model="selectedJob.podMobile" />
+                </div>
+            </div>
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">Weight: *</label>
+                <label class="control-label col-sm-6">Number of Items: *</label>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" ng-disabled="permissions !== 'Max'" ng-readonly="permissions !== 'Max'" ng-model="selectedJob.weight" ng-blur="nonNullWeight()" />
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" ng-disabled="permissions !== 'Max'" ng-readonly="permissions !== 'Max'" ng-model="selectedJob.quantity" ng-blur="intQuantity()" />
+                </div>
+            </div>
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">DG Class:</label>
+                <label class="control-label col-sm-6">DG Docs:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <select class="form-control" ng-disabled="permissions !== 'Max'" ng-readonly="permissions !== 'Max'"
+                            ng-options="dangerousGoodsClass.value as dangerousGoodsClass.value for dangerousGoodsClass in dangerousGoodsClasses" ng-model="selectedJob.dgClass" ng-change="setDocsFalse()">
+                        <option value="" selected>--- None Selected ---</option>
+                    </select>
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <select class="form-control" ng-disabled="selectedJob.dgClass === null || permissions !== 'Max'" ng-readonly="selectedJob.dgClass === null || permissions !== 'Max'"
+                            ng-options="dangerousGoodsDoc.value as dangerousGoodsDoc.name for dangerousGoodsDoc in dangerousGoodsDocs" ng-model="selectedJob.dgDocs"></select>
+                </div>
+            </div>
+            <div class="form-group fixed-height" ng-if="countryCode != 'NZ'">
+                <label class="control-label col-sm-12">Dry Ice Weight:</label>
+                <div class="col-sm-12 pad-bottom">
+                    <input class="form-control" ng-disabled="permissions !== 'Max'" ng-readonly="permissions !== 'Max'" ng-model="selectedJob.dryIceWeight" />
+                </div>
+            </div>
+            <div class="form-group fixed-height-textarea" ng-if="permissions !== 'Min'">
+                <label class="control-label col-sm-12">Add to Notes:</label>
+                <div class="col-sm-12 pad-bottom">
+                    <textarea class="form-control" maxlength="500" ng-disabled="permissions === 'Min'" ng-readonly="permissions === 'Min'" rows="2" ng-model="selectedJob.addToNotes" />
+                </div>
+            </div>
+            <div class="form-group fixed-height-textarea">
+                <label class="control-label col-sm-12">Notes:</label>
+                <div class="col-sm-12 pad-bottom">
+                    <textarea class="form-control" rows="2" ng-disabled="true" ng-readonly="true" ng-model="selectedJob.notes" />
+                </div>
+            </div>
+            <div class="form-group fixed-height-textarea">
+                <label class="control-label col-sm-12">Client Notes:</label>
+                <div class="col-sm-12 pad-bottom">
+                    <textarea class="form-control" rows="2" ng-disabled="true" ng-readonly="true" ng-model="selectedJob.clientNotes" />
+                </div>
+            </div>
+        </div>
+
+        <div ng-if="page === 'jobItems'">
+            <div class="form-group">
+                <table class="table-container-dimensions" style="margin:auto">
+                    <thead>
+                        <tr>
+                            <th class="table-title-dimensions">Item No</th>
+                            <th class="table-title-dimensions">Length ({{dimsUnit}})</th>
+                            <th class="table-title-dimensions">Width ({{dimsUnit}})</th>
+                            <th class="table-title-dimensions">Height ({{dimsUnit}})</th>
+                            <th class="table-title-dimensions">Weight ({{weightUnit}})</th>
+                            <th class="table-title-dimensions">Quantity</th>
+                            <th class="table-title-dimensions">PU Taillift</th>
+                            <th class="table-title-dimensions">DO Taillift</th>
+                            <th class="table-title-dimensions">Private Residence</th>
+                            <th class="table-title-dimensions" ng-if="permissions === 'Max'"><i class="fas fa-plus-circle" title="Add a new row to the job items table" ng-click="addJobItemRow()"></i></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr dir-paginate="jobItem in selectedJob.jobItems | orderBy:-itemId | itemsPerPage: 20 track by jobItem.itemId">
+                            <td class="table-content-dimensions" style="background-color: lightgrey">{{jobItem.itemId}}</td>
+                            <td class="table-content-dimensions"><input class="table-input-dimensions" type="number" ng-disabled="permissions !== 'Max'" ng-readonly="permissions !== 'Max'" ng-model="jobItem.length" /></td>
+                            <td class="table-content-dimensions"><input class="table-input-dimensions" type="number" ng-disabled="permissions !== 'Max'" ng-readonly="permissions !== 'Max'" ng-model="jobItem.depth" /></td>
+                            <td class="table-content-dimensions"><input class="table-input-dimensions" type="number" ng-disabled="permissions !== 'Max'" ng-readonly="permissions !== 'Max'" ng-model="jobItem.height" /></td>
+                            <td class="table-content-dimensions"><input class="table-input-dimensions" type="number" ng-disabled="permissions !== 'Max'" ng-readonly="permissions !== 'Max'" ng-change="setJobItemWeightQuantity()" ng-model="jobItem.weight" /></td>
+                            <td class="table-content-dimensions"><input class="table-input-dimensions" type="number" ng-disabled="permissions !== 'Max'" ng-readonly="permissions !== 'Max'" ng-change="setJobItemWeightQuantity()" ng-model="jobItem.items" /></td>
+                            <td class="table-content-dimensions" ng-style="{ 'background-color': permissions !== 'Max' ? 'lightgrey' : 'white' }">
+                                <input class="table-input-dimensions" type="checkbox" ng-disabled="permissions !== 'Max' || selectedJob.vehicleSize !== 4" ng-readonly="permissions !== 'Max' || selectedJob.vehicleSize !== 4" ng-model="jobItem.pu" />
+                            </td>
+                            <td class="table-content-dimensions" ng-style="{ 'background-color': permissions !== 'Max' ? 'lightgrey' : 'white' }">
+                                <input class="table-input-dimensions" type="checkbox" ng-disabled="permissions !== 'Max' || selectedJob.vehicleSize !== 4" ng-readonly="permissions !== 'Max' || selectedJob.vehicleSize !== 4" ng-model="jobItem.do" />
+                            </td>
+                            <td class="table-content-dimensions" ng-style="{ 'background-color': permissions !== 'Max' ? 'lightgrey' : 'white' }">
+                                <input class="table-input-dimensions" type="checkbox" ng-disabled="permissions !== 'Max' || selectedJob.vehicleSize !== 4" ng-readonly="permissions !== 'Max' || selectedJob.vehicleSize !== 4" ng-model="jobItem.privateRes" />
+                            </td>
+                            <td class="table-content-dimensions" ng-if="permissions === 'Max'"><i class="fas fa-minus-circle" title="Remove this row from the job items table" ng-click="removeJobItemRow(jobItem.itemId)"></i></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div ng-if="page === 'accessorials'">
+            <div class="form-group">
+                <div>
+                    <div style="padding: 16px; overflow-y: auto; max-height: calc(max(85vh, 818px) - 200px);">
+
+                        <!-- ── CURRENT CHARGES ── -->
+                        <div style="margin-bottom: 24px;">
+                            <h6 style="font-weight:600; margin-bottom:12px;">
+                                <i class="fas fa-receipt" style="margin-right:6px; color:#495057;"></i>
+                                Applied Charges
+                                <span class="badge badge-secondary" style="margin-left:8px; font-size:12px;">
+                                    {{jobAccessorialCharges.length}}
+                                </span>
+                            </h6>
+
+                            <div ng-if="!jobAccessorialCharges || jobAccessorialCharges.length === 0"
+                                 class="text-muted"
+                                 style="padding:16px; background:#f8f9fa; border-radius:4px; font-style:italic; font-size:13px;">
+                                No accessorial charges applied to this job.
+                            </div>
+
+                            <div ng-if="jobAccessorialCharges && jobAccessorialCharges.length > 0" style="overflow-x:auto;">
+                                <table class="table table-sm table-hover" style="margin-bottom:0; width:100%; table-layout:fixed;">
+                                    <thead style="background-color:#f8f9fa;">
+                                        <tr>
+                                            <th style="width:22%;">Service</th>
+                                            <th style="width:10%; text-align:center;">Stage</th>
+                                            <th style="width:22%;">Input / Units</th>
+                                            <th style="width:12%; text-align:right;">Amount</th>
+                                            <th style="width:24%;">Notes</th>
+                                            <th style="width:10%; text-align:center;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr ng-repeat="charge in jobAccessorialCharges | orderBy: 'name'"
+                                            ng-class="{'table-warning': charge.dirty}">
+                                            <td style="vertical-align:middle; word-wrap:break-word; overflow:hidden;">
+                                                <strong>{{charge.name}}</strong>
+                                                <br>
+                                                <small class="text-muted">{{charge.chargeType | accessorialChargeTypeLabel}}</small>
+                                            </td>
+                                            <td style="text-align:center; vertical-align:middle;">
+                                                <span class="badge"
+                                                      ng-class="{ 'badge-info': charge.addedAtStage === 'booking', 'badge-warning': charge.addedAtStage === 'dispatch',
+                                                        'badge-secondary': charge.addedAtStage === 'job_list' }"
+                                                      style="font-size:10px; text-transform:uppercase;">
+                                                    {{charge.addedAtStage}}
+                                                </span>
+                                            </td>
+                                            <td style="vertical-align:middle;">
+                                                <!-- Per unit / hourly: inputValue + rate info -->
+                                                <div ng-if="charge.chargeType === 'per_unit' || charge.chargeType === 'hourly'"
+                                                     style="display:flex; flex-direction:column; gap:4px;">
+                                                    <div style="display:flex; align-items:center; gap:6px;">
+                                                        <input type="number"
+                                                               ng-model="charge.inputValue"
+                                                               ng-change="markJobChargeDirty(charge)"
+                                                               ng-disabled="charge.isAutoPopulated"
+                                                               ng-readonly="charge.isAutoPopulated"
+                                                               style="width:70px; padding:3px; border:1px solid #ced4da; border-radius:3px;"
+                                                               ng-style="{'background-color': charge.isAutoPopulated ? '#e9ecef' : 'white', 'cursor': charge.isAutoPopulated ? 'not-allowed' : 'text'}"
+                                                               placeholder="Value"
+                                                               title="{{charge.isAutoPopulated ? 'Auto-calculated from job details' : 'Enter value'}}">
+                                                        <i ng-if="charge.isAutoPopulated"
+                                                           class="fas fa-lock"
+                                                           style="color:#6c757d; font-size:12px;"
+                                                           title="Auto-calculated from job details"></i>
+                                                        <small><strong>{{charge.unitTypeName}}</strong> × ${{charge.ratePerUnit | number:2}}</small>
+                                                    </div>
+                                                    <small ng-if="charge.freeAllowance" class="text-muted" style="font-style:italic;">
+                                                        (First {{charge.freeAllowance}} {{charge.freeAllowanceUnitTypeName}} free)
+                                                    </small>
+                                                    <small ng-if="charge.minimumCharge" class="text-muted" style="font-style:italic;">
+                                                        (Min charge: ${{charge.minimumCharge | number:2}})
+                                                    </small>
+                                                    <small ng-if="charge.maximumCharge" class="text-muted" style="font-style:italic;">
+                                                        (Max charge: ${{charge.maximumCharge | number:2}})
+                                                    </small>
+                                                </div>
+                                                <!-- Percentage: show base -->
+                                                <div ng-if="charge.chargeType === 'percentage'"
+                                                     style="display:flex; flex-direction:column; gap:4px;">
+                                                    <div style="display:flex; align-items:center; gap:6px;">
+                                                        <input type="number"
+                                                               ng-model="charge.inputValue"
+                                                               ng-change="markJobChargeDirty(charge)"
+                                                               ng-disabled="charge.isAutoPopulated"
+                                                               ng-readonly="charge.isAutoPopulated"
+                                                               style="width:80px; padding:3px; border:1px solid #ced4da; border-radius:3px;"
+                                                               ng-style="{'background-color': charge.isAutoPopulated ? '#e9ecef' : 'white', 'cursor': charge.isAutoPopulated ? 'not-allowed' : 'text'}"
+                                                               placeholder="Base $"
+                                                               title="{{charge.isAutoPopulated ? 'Auto-calculated from job details' : 'Enter base amount'}}">
+                                                        <i ng-if="charge.isAutoPopulated"
+                                                           class="fas fa-lock"
+                                                           style="color:#6c757d; font-size:12px;"
+                                                           title="Auto-calculated from job details"></i>
+                                                        <small class="text-muted">@ {{charge.percentageRate}}%</small>
+                                                    </div>
+                                                    <small ng-if="charge.minimumCharge" class="text-muted" style="font-style:italic;">
+                                                        (Min charge: ${{charge.minimumCharge | number:2}})
+                                                    </small>
+                                                    <small ng-if="charge.maximumCharge" class="text-muted" style="font-style:italic;">
+                                                        (Max charge: ${{charge.maximumCharge | number:2}})
+                                                    </small>
+                                                </div>
+                                                <!-- Flat / quote: no input needed -->
+                                                <div ng-if="charge.chargeType === 'flat'" style="display:flex; flex-direction:column; gap:4px;">
+                                                    <small class="text-muted">Flat fee</small>
+                                                    <small ng-if="charge.minimumCharge" class="text-muted" style="font-style:italic;">
+                                                        (Min: ${{charge.minimumCharge | number:2}})
+                                                    </small>
+                                                    <small ng-if="charge.maximumCharge" class="text-muted" style="font-style:italic;">
+                                                        (Max: ${{charge.maximumCharge | number:2}})
+                                                    </small>
+                                                </div>
+                                                <small ng-if="charge.chargeType === 'quote_based'" class="text-muted">Quote</small>
+                                            </td>
+                                            <td style="text-align:right; vertical-align:middle;">
+                                                <span ng-if="charge.dirty" style="color:#e67e22; font-weight:600;">
+                                                    ${{charge.previewAmount | number:2}}
+                                                </span>
+                                                <span ng-if="!charge.dirty">
+                                                    ${{charge.calculatedAmount | number:2}}
+                                                </span>
+                                            </td>
+                                            <td style="vertical-align:middle;">
+                                                <input type="text"
+                                                       ng-model="charge.notes"
+                                                       ng-change="markJobChargeDirty(charge)"
+                                                       style="width:100%; padding:3px; border:1px solid #ced4da; border-radius:3px; font-size:12px;"
+                                                       placeholder="Notes...">
+                                            </td>
+                                            <td style="text-align:center; vertical-align:middle;">
+                                                <button class="btn btn-sm btn-success"
+                                                        ng-if="charge.dirty"
+                                                        ng-click="saveJobAccessorialCharge(charge)"
+                                                        style="padding:2px 8px; margin-right:2px;"
+                                                        title="Save changes">
+                                                    <i class="fas fa-save"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger"
+                                                        ng-click="deleteJobAccessorialCharge(charge)"
+                                                        style="padding:2px 8px;"
+                                                        title="Remove charge">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                    <tfoot style="background-color:#f8f9fa; font-weight:600;">
+                                        <tr>
+                                            <td colspan="5" style="text-align:right;">Total Accessorial Charges:</td>
+                                            <td style="text-align:right;">
+                                                ${{getJobAccessorialTotal() | number:2}}
+                                            </td>
+                                            <td colspan="2"></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- ── ADD NEW CHARGES ── -->
+                        <div>
+                            <h6 style="font-weight:600; margin-bottom:12px;">
+                                <i class="fas fa-plus-circle" style="margin-right:6px; color:#495057;"></i>
+                                Add Charges
+                            </h6>
+
+                            <div ng-if="availableAccessorialCharges.length === 0"
+                                 class="text-muted"
+                                 style="padding:16px; background:#f8f9fa; border-radius:4px; font-style:italic; font-size:13px;">
+                                No additional charges available for this job.
+                            </div>
+
+                            <div ng-if="availableAccessorialCharges.length > 0" style="overflow-x:auto;">
+                                <table class="table table-sm table-hover" style="margin-bottom:0;">
+                                    <thead style="background-color:#f8f9fa;">
+                                        <tr>
+                                            <th style="width:5%; text-align:center;">
+                                                <i class="fas fa-check" title="Select"></i>
+                                            </th>
+                                            <th style="width:20%;">Service</th>
+                                            <th style="width:28%;">Description</th>
+                                            <th style="width:22%;">Calculation</th>
+                                            <th style="width:10%; text-align:right;">Amount</th>
+                                            <th style="width:15%;">Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr ng-repeat="accessorialCharge in availableAccessorialCharges | orderBy: 'name'"
+                                            ng-class="{'table-success': accessorialCharge.selected, 'table-secondary': !accessorialCharge.selected}"
+                                            style="transition: background-color 0.2s;">
+                                            <td style="text-align:center; vertical-align:middle;">
+                                                <input type="checkbox"
+                                                       ng-model="accessorialCharge.selected"
+                                                       ng-change="accessorialChargeToggled(accessorialCharge)"
+                                                       ng-disabled="accessorialCharge.requiresQuote"
+                                                       style="width:18px; height:18px; cursor:pointer;">
+                                            </td>
+                                            <td style="vertical-align:middle;">
+                                                <strong>{{accessorialCharge.name}}</strong>
+                                                <span ng-if="accessorialCharge.alreadyApplied"
+                                                      class="badge badge-secondary"
+                                                      style="margin-left:6px; padding:2px 6px; border-radius:3px; font-size:11px;">
+                                                    APPLIED
+                                                </span>
+                                            </td>
+                                            <td style="vertical-align:middle;">
+                                                <small>{{accessorialCharge.description || 'No description'}}</small>
+                                            </td>
+                                            <td style="vertical-align:middle;">
+                                                <!-- Flat -->
+                                                <div ng-if="accessorialCharge.chargeType === 'flat'" style="display:flex; flex-direction:column; gap:4px;">
+                                                    <small><strong>Flat fee</strong></small>
+                                                    <small ng-if="accessorialCharge.minimumCharge" class="text-muted" style="font-style:italic;">
+                                                        (Min: ${{accessorialCharge.minimumCharge | number:2}})
+                                                    </small>
+                                                    <small ng-if="accessorialCharge.maximumCharge" class="text-muted" style="font-style:italic;">
+                                                        (Max: ${{accessorialCharge.maximumCharge | number:2}})
+                                                    </small>
+                                                </div>
+                                                <!-- Per unit / hourly -->
+                                                <div ng-if="accessorialCharge.chargeType === 'per_unit' || accessorialCharge.chargeType === 'hourly'"
+                                                     style="display:flex; flex-direction:column; gap:4px;">
+                                                    <div style="display:flex; align-items:center; gap:6px;">
+                                                        <input type="number"
+                                                               ng-model="accessorialCharge.inputValue"
+                                                               ng-change="recalculateCharge(accessorialCharge)"
+                                                               ng-disabled="!accessorialCharge.selected || accessorialCharge.isAutoPopulated"
+                                                               ng-readonly="accessorialCharge.isAutoPopulated"
+                                                               min="0"
+                                                               step="1"
+                                                               style="width:70px; padding:4px; border:1px solid #ced4da; border-radius:3px;"
+                                                               ng-style="{'background-color': accessorialCharge.isAutoPopulated ? '#e9ecef' : 'white'}">
+                                                        <small><strong>{{accessorialCharge.unitTypeName}}</strong> × ${{accessorialCharge.ratePerUnit | number:2}}</small>
+                                                        <i ng-if="accessorialCharge.isAutoPopulated"
+                                                           class="fas fa-lock"
+                                                           style="color:#6c757d; font-size:12px;"
+                                                           title="Auto-calculated from job details"></i>
+                                                    </div>
+                                                    <small ng-if="accessorialCharge.freeAllowance" class="text-muted" style="font-style:italic;">
+                                                        (First {{accessorialCharge.freeAllowance}} {{accessorialCharge.freeAllowanceUnitTypeName}} free)
+                                                    </small>
+                                                    <small ng-if="accessorialCharge.minimumQuantity" class="text-muted" style="font-style:italic;">
+                                                        (Min: {{accessorialCharge.minimumQuantity}} {{accessorialCharge.unitTypeName}})
+                                                    </small>
+                                                    <small ng-if="accessorialCharge.minimumCharge" class="text-muted" style="font-style:italic;">
+                                                        (Min charge: ${{accessorialCharge.minimumCharge | number:2}})
+                                                    </small>
+                                                    <small ng-if="accessorialCharge.maximumCharge" class="text-muted" style="font-style:italic;">
+                                                        (Max charge: ${{accessorialCharge.maximumCharge | number:2}})
+                                                    </small>
+                                                </div>
+                                                <!-- Percentage -->
+                                                <div ng-if="accessorialCharge.chargeType === 'percentage'" style="display:flex; flex-direction:column; gap:4px;">
+                                                    <small><strong>{{accessorialCharge.percentageRate}}%</strong> {{getPercentageDescription(accessorialCharge)}}</small>
+                                                    <small ng-if="getPercentageCalculationNote(accessorialCharge)" class="text-muted" style="font-style:italic;">
+                                                        ({{getPercentageCalculationNote(accessorialCharge)}})
+                                                    </small>
+                                                    <small ng-if="accessorialCharge.minimumCharge" class="text-muted" style="font-style:italic;">
+                                                        (Min charge: ${{accessorialCharge.minimumCharge | number:2}})
+                                                    </small>
+                                                    <small ng-if="accessorialCharge.maximumCharge" class="text-muted" style="font-style:italic;">
+                                                        (Max charge: ${{accessorialCharge.maximumCharge | number:2}})
+                                                    </small>
+                                                </div>
+                                                <!-- Quote -->
+                                                <small ng-if="accessorialCharge.requiresQuote" class="text-warning">
+                                                    <i class="fas fa-phone"></i> <strong>Requires quote</strong>
+                                                </small>
+                                            </td>
+                                            <td style="text-align:right; vertical-align:middle;">
+                                                <strong ng-if="!accessorialCharge.requiresQuote && accessorialCharge.selected"
+                                                        style="font-size:15px; color:#28a745;">
+                                                    ${{accessorialCharge.calculatedAmount | number:2}}
+                                                </strong>
+                                                <span ng-if="!accessorialCharge.requiresQuote && !accessorialCharge.selected" class="text-muted">
+                                                    ${{accessorialCharge.calculatedAmount | number:2}}
+                                                </span>
+                                                <span ng-if="accessorialCharge.requiresQuote" class="text-muted" style="font-style:italic;">TBD</span>
+                                            </td>
+                                            <td style="vertical-align:middle;">
+                                                <input type="text"
+                                                       ng-model="accessorialCharge.notes"
+                                                       ng-disabled="!accessorialCharge.selected"
+                                                       style="width:100%; padding:3px; border:1px solid #ced4da; border-radius:3px; font-size:12px;"
+                                                       placeholder="Notes...">
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                <!-- Add button -->
+                                <div style="margin-top:12px; display:flex; justify-content:flex-end;">
+                                    <button class="btn btn-primary"
+                                            ng-click="addSelectedAccessorialCharges()"
+                                            ng-disabled="!hasSelectedNewCharges()">
+                                        <i class="fas fa-plus"></i>
+                                        Add Selected Charges
+                                        <span ng-if="hasSelectedNewCharges()">
+                                            (${{getSelectedNewChargesTotal() | number:2}})
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div ng-if="page === 'jobStatusScans'">
+            <div class="form-group">
+                <table class="table-container-dimensions" style="margin:auto">
+                    <thead>
+                        <tr>
+                            <th class="table-title-dimensions">DateTime</th>
+                            <th class="table-title-dimensions">Location</th>
+                            <th class="table-title-dimensions">Operator</th>
+                            <th class="table-title-dimensions">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr dir-paginate="scan in jobStatusScans | itemsPerPage: 20">
+                            <td class="table-content-dimensions">{{scan.dateTime}}</td>
+                            <td class="table-content-dimensions">{{scan.location}}</td>
+                            <td class="table-content-dimensions">{{scan.operator}}</td>
+                            <td class="table-content-dimensions">{{scan.status}}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div ng-if="page === 'speedPrice'">
+            <div class="col-sm-6" style="display:flex;flex-direction:column;justify-content:space-between;height:100%;">
+                <div></div>
+                <div>
+                    <div class="form-group">
+                        <label>Speed: *</label>
+                        <select class="form-control" ng-disabled="permissions === 'Min' || selectedJob.clientItemIds" ng-readonly="permissions === 'Min' || selectedJob.clientItemIds"
+                                ng-options="speed.id as speed.name for speed in speeds"
+                                ng-if="countryCode != 'NZ'" ng-model="selectedJob.speedId" ng-change="getUpdatedPrices()"></select>
+
+                        <select class="form-control" ng-disabled="permissions === 'Min' || selectedJob.clientItemIds" ng-readonly="permissions === 'Min' || selectedJob.clientItemIds"
+                                ng-options="selectedJobSpeed.jobTypeId as selectedJobSpeed.name for selectedJobSpeed in selectedJobSpeeds | filter: { availabilityColour: '' }"
+                                ng-if="countryCode == 'NZ'" ng-model="selectedJob.speedId" ng-change="prepareRerateObject()"></select>
+                    </div>
+
+                    <div class="form-group job-list-header">Job Detail</div>
+                    <div class="form-group fixed-height-label">
+                        <label class="col-sm-6">Booked By:</label>
+                        <label class="col-sm-6" style="font-weight:normal;">{{selectedJob.bookedBy}}</label>
+                    </div>
+                    <div class="form-group fixed-height-label">
+                        <label class="col-sm-6">Booked Time:</label>
+                        <label class="col-sm-6" style="font-weight:normal;">{{selectedJob.date | date:'d MMM yyyy'}} {{selectedJob.timeHours}} {{selectedJob.timeZone}}</label>
+                    </div>
+                    <div class="form-group fixed-height-label">
+                        <label class="col-sm-6">Pickup Time:</label>
+                        <label class="col-sm-6" style="font-weight:normal;">{{selectedJob.pickUpTime | date:'d MMM yyyy HH:mm'}}</label>
+                    </div>
+                    <div class="form-group fixed-height-label" ng-if="showPrice">
+                        <label class="col-sm-6">Price:</label>
+                        <label class="col-sm-4" style="font-weight:normal;">${{selectedJob.amount.toFixed(2)}}</label> <!--excl GST-->
+                        <button class="col-sm-2 function-button" ng-click="hidePrice(false)">Hide</button>
+                    </div>
+                    <div class="form-group fixed-height-label" ng-if="!showPrice">
+                        <button class="function-button" ng-click="hidePrice(true)">Show</button>
+                    </div>
+                    <!--
+        <div class="form-group fixed-height-label">
+            <label class="col-sm-6"></label>
+            <label class="col-sm-6" style="font-weight:normal;">${{(selectedJob.amount * 1.15).toFixed(2)}} incl GST</label>
+        </div>-->
+
+                    <div style="height:16px;"></div>
+
+                    <div class="form-group job-list-header">Job Status</div>
+                    <div class="form-group fixed-height-label">
+                        <label class="col-sm-6">Status:</label>
+                        <label class="col-sm-6" style="font-weight:normal;">
+                            {{selectedJob.undeliverableLocation ? getLocationName(selectedJob.undeliverableLocation) : (selectedJob.status && selectedJob.speedId ? getStatusName(selectedJob.status, selectedJob.speedId) : null)}}
+                        </label>
+                    </div>
+                    <div class="form-group fixed-height-label">
+                        <label class="col-sm-6">POD Name:</label>
+                        <label class="col-sm-6" style="font-weight:normal;">{{selectedJob.podName}}</label>
+                    </div>
+                    <div class="form-group fixed-height-label">
+                        <label class="col-sm-6">Delivery Time:</label>
+                        <label class="col-sm-6" style="font-weight:normal;">{{selectedJob.deliveryTime | date:'d MMM yyyy HH:mm'}}</label>
+                    </div>
+                    <div class="form-group fixed-height-label">
+                        <label class="col-sm-6">Courier Name:</label>
+                        <label class="col-sm-6" style="font-weight:normal;">{{selectedJob.courierId ? getCourierName(selectedJob.courierId) : null}}</label>
+                    </div>
+                </div>
+                <div></div>
+                <div ng-if="selectedJob.status === 6" style="display:flex; flex-direction:column; gap:6px;">
+                    <a class="function-button" style="display:block; text-align:center; text-decoration:none; color:inherit; padding:6px; border-radius:12px; cursor:pointer;"
+                       ng-href="API/PodReport/{{selectedJob.id}}" target="_blank" title="Download POD PDF">
+                        <i class="fas fa-file-pdf" style="margin-right:6px;"></i>Download POD PDF
+                    </a>
+                    <a class="function-button" style="display:block; text-align:center; text-decoration:none; color:inherit; padding:6px; border-radius:12px; cursor:pointer;"
+                       ng-href="API/PodReport/Spreadsheet/{{selectedJob.id}}" target="_blank" title="Download POD Excel">
+                        <i class="fas fa-file-excel" style="margin-right:6px;"></i>Download POD Excel
+                    </a>
+                    <button class="function-button" style="padding:6px; border-radius:12px;" ng-click="openSendPodModal(selectedJob)" title="Email POD">
+                        <i class="fas fa-envelope" style="margin-right:6px;"></i>Email POD
+                    </button>
+                </div>
+            </div>
+
+            <div class="col-sm-6 available-speed-panel" ng-if="permissions !== 'Min'">
+                <div>
+                    <label>Current Price</label>
+                    <div class="form-group">
+                        <table style="width:50%;margin:auto;">
+                            <tbody>
+                                <tr ng-repeat="description in speedDescription.descriptions">
+                                    <td>{{description[0]}}</td>
+                                    <td></td>
+                                    <td style="text-align:right;">${{fixedDecimal(description[1])}}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <table style="width:50%;margin:auto;">
+                            <tbody>
+                                <tr>
+                                    <td><b>Total</b></td>
+                                    <td ng-if="countryCode == 'NZ'">(Excl GST)</td>
+                                    <td style="text-align:right; border-top:1px solid black;">${{(speedDescription.rate + getJobAccessorialTotal()).toFixed(2)}}</td>
+                                </tr>
+                                <tr ng-if="countryCode == 'NZ'">
+                                    <td></td>
+                                    <td>(Incl GST)</td>
+                                    <td style="text-align:right; border-bottom:3px double black; border-top:1px solid black;">${{((speedDescription.rate + getJobAccessorialTotal()) * 1.15).toFixed(2)}}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div ng-if="countryCode == 'NZ'">
+                    <label>Other Options</label>
+                    <div class="form-group">
+                        <table class="table-container-dimensions" style="margin:auto">
+                            <thead>
+                                <tr>
+                                    <th class="table-title-dimensions">Speed</th>
+                                    <th class="table-title-dimensions">Rate</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr dir-paginate="selectedJobSpeed in selectedJobSpeeds | orderBy:-amount | filter: { availabilityColour: '' } | itemsPerPage: 50 track by selectedJobSpeed.jobTypeId" ng-if="!selectedJob.clientItemIds">
+                                    <td class="table-content-dimensions" ng-style="{ 'background-color': selectedJobSpeed.availabilityColour }">{{selectedJobSpeed.name}}</td>
+                                    <td class="table-content-dimensions" ng-style="{ 'background-color': selectedJobSpeed.availabilityColour }">${{selectedJobSpeed.rate.toFixed(2)}}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div style="text-align:center;padding-top:10px;">
+                            <label class="speed-orange">Likely Delay</label>
+                            <label class="speed-yellow">Possible Delay</label>
+                            <label class="speed-green">Available</label>
+                            <label style="font-weight:normal;">
+                                Always book the speed you would like us to attempt.<br />
+                                Prices excluding GST.
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-sm-6 available-speed-panel" ng-if="permissions === 'Min'">
+                <div ng-if="selectedJob.deliveryPhotos && selectedJob.deliveryPhotos.length > 0" style="display: block; padding: 1rem 1.5rem;">
+                    <div style="color: #64748b; font-size: 0.875rem; margin-bottom: 0.5rem; font-weight: 600;">
+                        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px;">
+                            <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
+                        </svg>
+                        Delivery Photos ({{selectedJob.deliveryPhotos.length}})
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        <img ng-repeat="photo in selectedJob.deliveryPhotos"
+                             ng-if="photo.isImage && photo.data"
+                             ng-src="data:{{photo.contentType}};base64,{{photo.data}}"
+                             alt="{{photo.fileName}}"
+                             ng-click="openPhotoModal(photo)"
+                             class="pod-image pod-thumbnail"
+                             style="width: 90px; height: 90px; object-fit: cover; cursor: pointer; border-radius: 4px; border: 2px solid #ddd; transition: all 0.2s;"
+                             onmouseover="this.style.borderColor='#0088cc'; this.style.transform='scale(1.05)';"
+                             onmouseout="this.style.borderColor='#ddd'; this.style.transform='scale(1)';" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div ng-if="page === 'functions'">
+            <div class="col-sm-6">
+                <div class="form-group">
+                    <label>Send Feedback:</label>
+                    <select class="form-control" ng-model="functions.feedbackType" ng-options="feedback.id as feedback.value for feedback in feedbacks">
+                        <option value="" disabled selected hidden>Select a feedback type...</option>
+                    </select>
+                    <textarea class="form-control" rows="5" ng-model="functions.feedback" />
+                    <button class="function-button" ng-disabled="!functions.feedbackType" ng-click="sendFeedback()">Send Feedback</button>
+
+                    <div style="height:16px;"></div>
+
+                    <div style="text-align:center;">Please Note: Submitting feedback will send an email to us, which is only monitored during work hours (Mon-Fri 7am-7pm).</div>
+                </div>
+            </div>
+            <div class="col-sm-6">
+                <div class="form-group">
+                    <label>Email Job To:</label>
+                    <input class="form-control" maxlength="254" ng-model="functions.emailJobTo" />
+                    <button class="function-button" ng-disabled="!functions.emailJobTo" ng-click="sendEmail()">Email</button>
+                </div>
+
+                <div style="height:16px;"></div>
+
+                <div class="form-group">
+                    <label>Print Packing Slip</label>
+                    <select class="form-control" ng-model="functions.printFormat" ng-options="labelSize.value as labelSize.name for labelSize in labelSizes">
+                        <option value="" selected>PDF (A4)</option>
+                    </select>
+                    <button class="function-button" ng-click="printLabel()">Print</button>
+                </div>
+
+                <div style="height:16px;" ng-if="false"></div>
+
+                <button class="function-button" style="border-bottom-left-radius:0px; border-bottom-right-radius:0px;" ng-disabled="!checkIfPrebook()" ng-if="checkIfPrebook()" ng-click="openReadyModal()">Job Ready Now</button>
+
+                <div style="height:16px;"></div>
+
+                <button class="function-button" style="border-bottom-left-radius:0px; border-bottom-right-radius:0px;" ng-disabled="permissions !== 'Max'" ng-if="permissions === 'Max'" ng-click="openCancelModal()">Cancel Job</button>
+
+                <div style="height:16px;"></div>
+            </div>
+            <div class="col-sm-12">
+                <button class="function-button" style="border-bottom-left-radius:0px; border-bottom-right-radius:0px;" ng-disabled="!selectedJob.trackingUrl" ng-click="openTracking()">View Tracking</button>
+            </div>
+        </div>
+
+        <div>
+            <div class="alert alert-danger error" role="alert" style="margin-bottom:0px" ng-show="job.errors.length > 0">
+                <div ng-repeat="error in job.errors track by $index">{{error}}</div>
+            </div>
+            <!-- Need to check if errythang is valid before updating -->
+            <button class="confirm-button" ng-disabled="false" ng-class="{'disabled-Button': false}" ng-click="checkJob()">Update Job</button>
+        </div>
+    </div>
+
+    <!--Filter Modal-->
+
+    <div class="filter-modal modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" style="top:10%; max-width:800px;" role="document">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Apply Filters</h5></div>
+                <div class="modal-body">
+                    <div class="form-group col-sm-6">
+                        <label>Job Number:</label>
+                        <input class="form-control"
+                               maxlength="15"
+                               ng-model="user.filters.jobNumber">
+                    </div>
+                    <div class="form-group col-sm-6">
+                        <label>Booked By:</label>
+                        <input class="form-control"
+                               maxlength="20"
+                               ng-model="user.filters.bookedBy" />
+                    </div>
+                    <div class="form-group col-sm-6">
+                        <label>Date From:</label>
+                        <input class="form-control"
+                               type="date"
+                               ng-model="user.filters.dateFrom">
+                    </div>
+                    <div class="form-group col-sm-6">
+                        <label>Date To:</label>
+                        <input class="form-control"
+                               type="date"
+                               ng-model="user.filters.dateTo">
+                    </div>
+                    <div class="form-group col-sm-6">
+                        <label>Ref A - {{user.selectedClient.referenceAMessage}}:</label>
+                        <input class="form-control"
+                               maxlength="20"
+                               ng-model="user.filters.clientRefA">
+                    </div>
+                    <div class="form-group col-sm-6">
+                        <label>Ref B - {{user.selectedClient.referenceBMessage}}:</label>
+                        <input class="form-control"
+                               maxlength="15"
+                               ng-model="user.filters.clientRefB">
+                    </div>
+                    <div class="form-group col-sm-6">
+                        <label>From Address:</label>
+                        <input class="form-control"
+                               maxlength="20"
+                               ng-model="user.filters.fromAddress">
+                    </div>
+                    <div class="form-group col-sm-6">
+                        <label>From City:</label>
+                        <input class="form-control"
+                               maxlength="20"
+                               ng-model="user.filters.americanFromCity">
+                    </div>
+                    <div class="form-group col-sm-6">
+                        <label>To Address:</label>
+                        <input class="form-control"
+                               maxlength="20"
+                               ng-model="user.filters.toAddress">
+                    </div>
+                    <div class="form-group col-sm-6">
+                        <label>To City:</label>
+                        <input class="form-control"
+                               maxlength="20"
+                               ng-model="user.filters.americanToCity">
+                    </div>
+                    <div class="form-group col-sm-6">
+                        <label>Notes:</label>
+                        <input class="form-control"
+                               ng-model="user.filters.notes" />
+                    </div>
+                    <div class="form-group col-sm-6">
+                        <label>Client Notes:</label>
+                        <input class="form-control"
+                               ng-model="user.filters.clientNotes" />
+                    </div>
+                </div>
+
+                <div class="alert alert-danger error" role="alert" style="margin-bottom:0px" ng-show="user.errors.length > 0">
+                    <div ng-repeat="error in user.errors track by $index">{{error}}</div>
+                </div>
+
+                <div class="prompt-footer">
+                    <i class="prompt-button prompt-button-confirm fas fa-edit" ng-click="checkFilters()"><span class="prompt-button-text">APPLY</span></i>
+                    <i class="prompt-button prompt-button-cancel fas fa-eraser" data-dismiss="modal" ng-click="clearAndGetFiltered()"><span class="prompt-button-text">CLEAR</span></i>
+                    <i class="prompt-button prompt-button-cancel fas fa-times" data-dismiss="modal"><span class="prompt-button-text">CLOSE</span></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--Cancel Modal-->
+
+    <div class="cancel-modal modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" style="top:30%" role="document">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Cancel this job?</h5></div>
+                <div class="modal-body">
+                    Please confirm you want to cancel this job: {{selectedJob.jobNumber}}
+                    <div ng-if="selectedJob.reoccuring">
+                        <label style="margin-top:0.5rem;">Please Note: This is a reccuring prebook, so cancelling this will also cancel any future occurances of this job!</label>
+                    </div>
+                </div>
+                <div class="prompt-footer">
+                    <i class="prompt-button prompt-button-confirm fas fa-trash" data-dismiss="modal" ng-click="cancelJob()"><span class="prompt-button-text">CANCEL</span></i>
+
+                    <i class="prompt-button prompt-button-cancel fas fa-times" data-dismiss="modal"><span class="prompt-button-text">CLOSE</span></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--Ready Modal-->
+
+    <div class="ready-modal modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" style="top:15%" role="document">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Ready this job?</h5></div>
+                <div class="modal-body">
+                    Please confirm that you want to mark this job as ready: {{selectedJob.jobNumber}}
+
+                    <div ng-if="jobsLoading">
+                        <div style="padding-top:8px;"></div>
+                        <div class="icon">
+                            <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+                        </div>
+                    </div>
+                    <div ng-if="selectedJob.onHold && !jobsLoading">
+                        <div style="padding-top:8px;"></div>
+
+                        <div class="form-group col-sm-12">
+                            <label>Job Number:</label>
+                            <input class="form-control"
+                                   maxlength="20"
+                                   ng-disabled="true"
+                                   ng-readonly="true"
+                                   ng-value="selectedJob.jobNumber">
+                        </div>
+                        <div class="form-group col-sm-6">
+                            <label>Deliver To:</label>
+                            <input class="form-control"
+                                   maxlength="20"
+                                   ng-disabled="true"
+                                   ng-readonly="true"
+                                   ng-value="selectedJob.toAddress">
+                        </div>
+                        <div class="form-group col-sm-6">
+                            <label>City:</label>
+                            <input class="form-control"
+                                   maxlength="20"
+                                   ng-disabled="true"
+                                   ng-readonly="true"
+                                   ng-value="selectedJob.americanToCity">
+                        </div>
+                        <div class="form-group col-sm-6">
+                            <label>Ref A - {{user.selectedClient.referenceAMessage}}:</label>
+                            <input class="form-control"
+                                   maxlength="20"
+                                   ng-model="selectedJob.clientRefA">
+                        </div>
+                        <div class="form-group col-sm-6">
+                            <label>Ref B - {{user.selectedClient.referenceBMessage}}:</label>
+                            <input class="form-control"
+                                   maxlength="15"
+                                   ng-model="selectedJob.clientRefB">
+                        </div>
+                        <div class="form-group col-sm-12">
+                            <label>Vehicle Size:</label>
+                            <select class="form-control"
+                                    ng-change="getUpdatedPrices()"
+                                    ng-options="vehicleSize.id as vehicleSize.name for vehicleSize in vehicleSizes"
+                                    ng-model="selectedJob.vehicleSize">
+                            </select>
+                        </div>
+                        <div class="form-group col-sm-6">
+                            <label>Weight:</label>
+                            <input class="form-control"
+                                   ng-change="getUpdatedPrices()"
+                                   ng-model="selectedJob.weight">
+                        </div>
+                        <div class="form-group col-sm-6">
+                            <label>Items:</label>
+                            <input class="form-control"
+                                   ng-change="getUpdatedPrices()"
+                                   ng-model="selectedJob.quantity">
+                        </div>
+
+                        <label ng-if="speedDescription.rate && checkPriceDifference()">New Price: ${{(speedDescription.rate + getJobAccessorialTotal()).toFixed(2)}}</label> <!-- excl GST-->
+                    </div>
+                </div>
+
+                <div class="prompt-footer">
+                    <i class="prompt-button prompt-button-confirm fas fa-check" data-dismiss="modal" ng-click="readyJobNow()"><span class="prompt-button-text">READY</span></i>
+
+                    <i class="prompt-button prompt-button-cancel fas fa-times" data-dismiss="modal"><span class="prompt-button-text">CLOSE</span></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--Update Modal-->
+
+    <div class="update-modal modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" style="top:30%" role="document">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Update this job?</h5></div>
+                <div class="modal-body">
+                    Please confirm you want to update this job: <b>{{selectedJob.jobNumber}}</b>
+                    <div ng-if="permissions !== 'Min' && checkPriceDifference()">
+                        <label class="price-modal-label" style="margin-top:0.5rem;">Original Price: ${{(selectedJob.amount).toFixed(2)}}</label> <!-- * 1.15-->
+                        <label class="price-modal-label">New Price: ${{(speedDescription.rate + getJobAccessorialTotal()).toFixed(2)}}</label> <!-- * 1.15-->
+                        <div>For a breakdown of this price change, close this window and view the Service/Price page.</div>
+                    </div>
+                    <div ng-if="selectedJob.reoccuring">
+                        <label style="margin-top:0.5rem;">Please Note: This is a reccuring prebook, so changing this will also update any future occurances of this job!</label>
+                    </div>
+                </div>
+                <div class="prompt-footer">
+                    <i class="prompt-button prompt-button-confirm fas fa-edit" data-dismiss="modal" ng-click="updateJob()"><span class="prompt-button-text">UPDATE</span></i>
+
+                    <i class="prompt-button prompt-button-cancel fas fa-times" data-dismiss="modal"><span class="prompt-button-text">CLOSE</span></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Send POD Modal -->
+    <div ng-if="showSendPodModal" class="photo-modal-overlay" ng-click="closeSendPodModal()">
+        <div class="photo-modal-container" ng-click="$event.stopPropagation()" style="max-width: 500px; padding: 20px;">
+            <button class="modal-close-btn" ng-click="closeSendPodModal()">
+                <svg viewBox="0 0 24 24" fill="currentColor" style="width: 24px; height: 24px;">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                </svg>
+            </button>
+            <h4 style="margin-top: 0;">Email POD Report - {{podModalJob.jobNumber}}</h4>
+            <div style="margin-bottom: 12px;">
+                <label>Email Address:</label>
+                <input class="form-control" type="email" ng-model="pod.email" placeholder="Enter email address..." />
+            </div>
+            <div style="text-align: right;">
+                <button class="btn btn-default" ng-click="closeSendPodModal()">Cancel</button>
+                <button class="btn btn-primary" ng-disabled="!pod.email || pod.sending" ng-click="sendPodEmail()" style="margin-left: 8px;">
+                    {{pod.sending ? 'Sending...' : 'Send POD'}}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Photo Modal -->
+    <div ng-if="modalPhoto" class="photo-modal-overlay" ng-click="closePhotoModal()">
+        <div class="photo-modal-container" ng-click="$event.stopPropagation()">
+            <button class="modal-close-btn" ng-click="closePhotoModal()">
+                <svg viewBox="0 0 24 24" fill="currentColor" style="width: 24px; height: 24px;">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                </svg>
+            </button>
+
+            <div class="modal-photo-wrapper">
+                <img ng-src="data:{{modalPhoto.contentType}};base64,{{modalPhoto.data}}"
+                     alt="{{modalPhoto.fileName}}"
+                     class="modal-photo-image" />
+            </div>
+
+            <div class="modal-photo-info">
+                <p style="font-weight: 600; margin: 0 0 8px 0;">{{modalPhoto.fileName}}</p>
+                <p ng-if="modalPhoto.lastModified" style="color: #666; font-size: 13px; margin: 4px 0;">
+                    {{modalPhoto.lastModified | date:'medium'}}
+                </p>
+                <p ng-if="modalPhoto.size" style="color: #666; font-size: 13px; margin: 4px 0;">
+                    {{(modalPhoto.size / 1024).toFixed(2)}} KB
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

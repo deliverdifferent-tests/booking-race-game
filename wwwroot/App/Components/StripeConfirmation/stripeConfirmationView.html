@@ -1,0 +1,173 @@
+﻿<div id="desktop-view">
+
+    <!--Loading screen for main panel-->
+    <div class="desktop-panel" ng-if="jobLoading">
+        <div></div>
+        <div class="loading-panel">
+            <div class="icon" style="margin-bottom:12px;">
+                <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+            </div>
+            <label>Please wait while we confirm your payment. This should take no longer than 30 seconds.</label>
+        </div>
+        <div></div>
+    </div>
+
+    <!--Job booked confirmation panel-->
+    <div class="desktop-panel" ng-if="!jobLoading && thisJob">
+        <div class="back-bar">
+            <div class="back-button-disabled"></div>
+        </div>
+
+        <div style="display:flex;flex-direction:row;height:100%;align-items:center;">
+            <div class="desktop-group" style="width:50%">
+                <div class="booking-title">
+                    <div class="booking-title-text">Confirmation Details</div>
+                </div>
+
+                <div class="extra-grouping scrollable">
+                    <div class="confirmation-info">
+                        <div class="flex-row">
+                            <div class="half-width confirmation-border">
+                                <div class="confirmation-title">From Address:</div>
+                                <div class="confirmation-data">{{getConfirmationAddress("from")}}</div>
+                            </div>
+                            <div class="half-width confirmation-border">
+                                <div class="confirmation-title">To Address:</div>
+                                <div class="confirmation-data">{{getConfirmationAddress("to")}}</div>
+                            </div>
+                        </div>
+                        <div class="flex-row confirmation-border" ng-if="thisJob.notes">
+                            <div style="width:100%">
+                                <div class="confirmation-title">Notes:</div>
+                                <div class="confirmation-data">{{thisJob.notes.replace("This job has not yet been paid for. Please ignore. ", "")}}</div>
+                            </div>
+                        </div>
+                        <div class="flex-row confirmation-border">
+                            <div class="half-width">
+                                <div class="confirmation-title">Pickup Date:</div>
+                                <div class="confirmation-data">{{thisJob.date.toLocaleDateString("en-US")}}</div>
+                            </div>
+                            <div class="half-width">
+                                <div class="confirmation-title">Pickup Time:</div>
+                                <div class="confirmation-data">{{thisJob.time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: true})}}</div>
+                            </div>
+                        </div>
+                        <div class="flex-row confirmation-border">
+                            <div class="half-width">
+                                <div class="confirmation-title">Quantity:</div>
+                                <div class="confirmation-data">{{thisJob.quantity}}</div>
+                            </div>
+                            <div class="half-width">
+                                <div class="confirmation-title">Dangerous Goods:</div>
+                                <div class="confirmation-data">{{thisJob.dgDocs == true ? "Yes - Class " + thisJob.dgClass : "No"}}</div>
+                            </div>
+                        </div>
+                        <div class="flex-row confirmation-border">
+                            <div class="half-width">
+                                <div class="confirmation-title">Service:</div>
+                                <div class="confirmation-data">{{getSpeedName(thisJob.speedId)}} {{thisJob.vehicleSize == 3 ? 'Van' : ''}}</div>
+                            </div>
+                            <div class="half-width">
+                                <div class="confirmation-title">Price:</div>
+                                <div class="confirmation-data">
+                                    ${{thisJob.amount.toFixed(2)}} (Exc GST)
+                                    ${{(thisJob.amount * 1.15).toFixed(2)}} (Incl GST)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div></div>
+            </div>
+            <div class="desktop-group" style="width:50%">
+                <div>
+                    <div class="booking-title">
+                        <div class="booking-title-text">Job Data</div>
+                    </div>
+                </div>
+
+                <div class="extra-grouping">
+                    <div class="input-group">
+                        <div>
+                            <div style="text-align:center;font-weight:bold;">Please print your label{{thisJob.quantity === 1 ? '' : 's'}} and attach it to your package{{thisJob.quantity === 1 ? '' : 's'}}!</div>
+                        </div>
+
+                        <div style="height:16px"></div>
+
+                        <label>Job Number:</label>
+                        <div class="single-address">
+                            <div class="desktop-payload">
+                                <div class="address-component">
+                                    <input type="text" class="data-input" ng-model="thisJob.jobNumber" disabled />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="height:16px"></div>
+
+                        <label>Tracking Link:</label>
+                        <div class="single-address">
+                            <div class="desktop-payload">
+                                <div class="address-component center-a">
+                                    <a href="" ng-click="openNewTab(thisJob.trackingUrl)">View your tracking here</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="height:16px"></div>
+
+                        <label>Print Label:</label>
+                        <div class="single-address">
+                            <div class="desktop-payload">
+                                <div class="address-component center-a">
+                                    <a href="" ng-click="openLabelModal()">Print your Label</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="height:16px"></div>
+
+                        <label>Stripe Charge:</label>
+                        <div>Your credit card was charged <b>${{(thisJob.amount * 1.15).toFixed(2)}} (Incl GST)</b>. A receipt has also been sent to the email you entered.</div>
+
+                        <div style="height:16px"></div>
+
+                        <button class="signup-button" ng-if="thisJob.client.id === 9196" ng-click="openNewTab('https://signup.urgent.co.nz/')">Create an Urgent Account</button>
+
+                        <div ng-if="thisJob.client.id !== 9196">
+                            <div style="text-align:center;font-weight:bold;">Please make sure the client has paid! If not remember to void the job!</div>
+                        </div>
+                    </div>
+                </div>
+                <div></div>
+            </div>
+        </div>
+
+        <button class="confirm-button" ng-disabled="false" ng-class="{'disabled-Button': false}" ng-click="$state.go('home')">Book Another?</button>
+    </div>
+
+    <!--Print Label Model-->
+
+    <div class="printLabel-modal modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" style="top:30%" role="document">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Print your Label</h5></div>
+                <div class="modal-body">
+                    Please select a label size and press 'PRINT'.
+
+                    <div style="margin-top:10px;">
+                        <label>Label Size:</label>
+                        <select class="data-input" ng-model="thisJob.labelSize" ng-options="labelSize.value as labelSize.name for labelSize in labelSizes">
+                            <option value="" selected>PDF (A4)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="prompt-footer">
+                    <i class="prompt-button prompt-button-confirm fas fa-print" data-dismiss="modal" ng-click="printLabel()"><span class="prompt-button-text">PRINT</span></i>
+
+                    <i class="prompt-button prompt-button-cancel fas fa-times" data-dismiss="modal"><span class="prompt-button-text">CLOSE</span></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

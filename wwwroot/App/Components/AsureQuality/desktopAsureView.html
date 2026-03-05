@@ -1,0 +1,510 @@
+﻿<div id="desktop-view">
+    <!--Loading screen for main panel-->
+
+    <div class="desktop-panel" ng-if="!clients || !booking.clientAddressGeocoded">
+        <div></div>
+        <div class="loading-panel">
+            <div class="icon">
+                <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+            </div>
+        </div>
+        <div></div>
+    </div>
+
+    <!--Main panel-->
+
+    <div ng-if="clients">
+
+        <!--Select client section-->
+
+        <div class="desktop-panel" ng-if="step == 'client' && !jobLoading">
+            <div class="back-bar">
+                <div class="back-button"></div>
+                <button class="clear-button" title="Reset your client/user selection" ng-click="clearClient()">Clear</button>
+            </div>
+
+            <div class="input-group" style="align-self:center; width:50%;">
+                <img style="display:block;margin-left:auto;margin-right:auto;" src="/Assets/images/AsureQuality_Logo.png" alt="Asure Quality Logo" width="514" height="200" />
+
+                <div ng-if="false">
+                    <label>Client:</label>
+                    <div class="single-address">
+                        <div class="desktop-payload">
+                            <div class="address-component">
+                                <select class="data-input" ng-model="booking.client" ng-change="initClient('all')" ng-options="client as client.name for client in clients">
+                                    <option value="" disabled selected hidden>Select a client...</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="height:16px;"></div>
+                </div>
+
+                <div ng-if="booking.client">
+                    <label>Access Code:</label>
+                    <div class="single-address">
+                        <div class="desktop-payload">
+                            <div class="address-component">
+                                <input class="data-input" ng-model="booking.password" ng-keydown="onSearchKeyDown($event)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="height:16px;"></div>
+
+                    <button class="confirm-button" ng-click="validateContact()">Verify</button>
+                </div>
+
+                <div style="width:100%" ng-if="contactValidated">
+                    <div>
+                        <div style="height:16px;"></div>
+
+                        <label>User:</label>
+                        <div class="single-address">
+                            <div class="desktop-payload">
+                                <div class="address-component">
+                                    <select class="data-input" ng-model="booking.clientContact" ng-options="contact as (contact.name + (contact.jobTitle ? ' - ' + contact.jobTitle : '')) for contact in contacts">
+                                        <option value="" disabled selected hidden>--- None Selected ---</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="height:16px;"></div>
+
+                        <label>Saved Booking:</label>
+                        <div class="single-address">
+                            <div class="desktop-payload">
+                                <div class="address-component">
+                                    <ui-select ng-model="booking.savedBooking"
+                                               ng-change="setSavedBooking()"
+                                               skip-focusser="true"
+                                               style="width:100%">
+                                        <ui-select-match placeholder="Search for a saved booking...">
+                                            <span ng-bind="$select.selected.name"></span>
+                                        </ui-select-match>
+                                        <ui-select-choices repeat="savedJob as savedJob in (savedJobs | filter: { name: $select.search } | filter: { contactId: booking.clientContact.id })">
+                                            <span ng-bind="savedJob.name"></span>
+                                        </ui-select-choices>
+                                    </ui-select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div ng-if="booking.savedBooking">
+                        <div style="height:16px;"></div>
+
+                        <label>Quantity:</label>
+                        <div class="single-address">
+                            <div class="desktop-payload">
+                                <div class="address-component">
+                                    <input class="data-input" ng-model="booking.quantity" ng-blur="intQuantity()" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="height:16px;"></div>
+
+                    <button class="confirm-button" ng-click="openJobList()">View Recent Jobs</button>
+                </div>
+            </div>
+
+            <div>
+                <div class="alert alert-danger error" role="alert" style="margin-bottom:0px; text-align:center; padding: 7px 7px;" ng-show="booking.errors.length > 0">
+                    <div ng-repeat="error in booking.errors track by $index">{{error}}</div>
+                </div>
+
+                <button class="confirm-button" ng-disabled="!booking.client || !booking.clientContact || !booking.fromDetails || jobLoading"
+                        ng-class="{'disabled-Button': !booking.client || !booking.clientContact || !booking.fromDetails || jobLoading}" ng-click="setClient()">
+                    Book Job
+                </button>
+            </div>
+        </div>
+
+        <!--Mini job list panel-->
+
+        <div class="desktop-panel" ng-if="step == 'jobList'">
+            <div class="back-bar">
+                <div class="back-button" title="Go to the mobile version of this page" ng-click="jobListBack()"><i class="fas fa-arrow-left"></i></div>
+                <h2 style="align-self:center; padding-top:7px;">Recent Jobs</h2>
+                <div style="display:flex">
+                    <div class="clear-button-saved" style="border-radius: 0px;" title="Refresh the job list" ng-click="getFilteredContactJobs()">
+                        <i class="fas fa-redo"></i>
+                    </div>
+                    <div class="clear-button-saved" title="Add a filter to show specified jobs" ng-click="openFilterModal()">
+                        <i class="fas fa-filter"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-center-dimensions" ng-if="jobs.length > 0">
+                <table class="table-container-dimensions" style="width:90%" ng-init="orderBy = ['-date', '-timeHours']">
+                    <thead>
+                        <tr>
+                            <th class="table-title-dimensions" style="width:11%;" ng-click="orderBy = orderBy === 'date' ? '-date' : 'date'">Date/Time</th>
+                            <th class="table-title-dimensions" style="width:11%;" ng-click="orderBy = orderBy === 'clientRefA' ? '-clientRefA' : 'clientRefA'">Reference</th>
+                            <th class="table-title-dimensions" style="width:11%;" ng-click="orderBy = orderBy === 'jobNumber' ? '-jobNumber' : 'jobNumber'">Job Number</th>
+                            <th class="table-title-dimensions" style="width:18%;" ng-click="orderBy = orderBy === 'fromAddress' ? '-fromAddress' : 'fromAddress'">From</th>
+                            <th class="table-title-dimensions" style="width:18%;" ng-click="orderBy = orderBy === 'toAddress' ? '-toAddress' : 'toAddress'">To</th>
+                            <th class="table-title-dimensions" style="width:8.5%;">Quantity</th>
+                            <th class="table-title-dimensions" style="width:8.5%;">Tracking</th>
+                            <th class="table-title-dimensions" style="width:7%;">Label</th>
+                            <th class="table-title-dimensions" style="width:7%;">Cancel</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr dir-paginate="job in jobs | orderBy:orderBy | itemsPerPage: 20 track by job.id">
+                            <td class="table-content-dimensions">
+                                {{job.date | date:'dd/MM/yyyy'}}<br />
+                                {{job.timeHours}}
+                            </td>
+                            <td class="table-content-dimensions">
+                                {{job.clientRefA}}<br />
+                                {{job.clientRefB}}
+                            </td>
+                            <td class="table-content-dimensions">
+                                {{job.jobNumber}}<br />
+                                {{job.undeliverableLocation ? getLocationName(job.undeliverableLocation) : (job.status && job.speedId ? getStatusName(job.status, job.speedId) : null)}}
+                            </td>
+                            <td class="table-content-dimensions">
+                                {{job.fromAddress.substring(0, 30)}}<br />
+                                {{job.fromAddressSuburbId ? getSuburbName(job.fromAddressSuburbId) : null}}
+                            </td>
+                            <td class="table-content-dimensions">
+                                {{job.toAddress.substring(0, 30)}}<br />
+                                {{job.toAddressSuburbId ? getSuburbName(job.toAddressSuburbId) : null}}
+                            </td>
+                            <td class="table-content-dimensions">
+                                <div ng-if="!checkCancelValidity(job)">{{job.quantity}}</div>
+                                <a href="" ng-if="checkCancelValidity(job)" ng-click="openQuantityModal(job)">{{job.quantity}}</a>
+                            </td>
+                            <td class="table-content-dimensions"><a href="" ng-click="openTracking(job)" ng-if="job.trackingUrl">Open</a><label ng-if="!job.trackingUrl">N/A</label></td>
+                            <td class="table-content-dimensions"><a href="" ng-click="openLabelModal(job, null)">Print</a></td>
+                            <td class="table-content-dimensions"><i class="fas fa-trash-alt" ng-if="checkCancelValidity(job)" ng-click="openCancelModal(job)"></i></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div ng-if="jobs.length === 0" style="text-align:center;">
+                <label style="text-align:center;">
+                    No jobs found!
+                </label>
+            </div>
+
+            <div>
+                <div class="pagination-bar">
+                    <dir-pagination-controls on-page-change="pageChanged(newPageNumber)" class="absolute-pagination" ng-if="jobs.length > 0"></dir-pagination-controls>
+                </div>
+            </div>
+        </div>
+
+        <!--Loading screen for job booking-->
+
+        <div class="desktop-panel" ng-if="jobLoading">
+            <div class="loading-panel">
+                <div style="height:300px;"></div>
+
+                <div class="icon">
+                    <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+                </div>
+            </div>
+        </div>
+
+        <!--Job booked confirmation panel-->
+
+        <div class="desktop-panel" ng-if="!jobLoading && step == 'jobBooked'">
+            <div class="back-bar">
+                <div class="back-button-disabled"></div>
+            </div>
+
+            <div style="display:flex;flex-direction:row;height:100%;align-items:center;">
+                <div class="desktop-group" style="width:50%">
+                    <div class="booking-title">
+                        <div class="booking-title-text">Confirmation Details</div>
+                    </div>
+
+                    <div class="extra-grouping scrollable">
+                        <div class="confirmation-info">
+                            <div class="flex-row confirmation-border">
+                                <div>
+                                    <div class="confirmation-title">Speed:</div>
+                                    <div class="confirmation-data">{{booking.selectedRate.serviceName}} {{(booking.van === true || booking.vehicle === 'van') && booking.truck !== true ? 'Van' : (booking.vehicle === 'bike') && booking.truck !== true && validBike ? 'Bike' : ''}}</div>
+                                </div>
+                            </div>
+                            <div class="flex-row">
+                                <div class="half-width confirmation-border">
+                                    <div class="confirmation-title">From Address:</div>
+                                    <div class="confirmation-data">{{getConfirmationAddress("from")}}</div>
+                                </div>
+                                <div class="half-width confirmation-border">
+                                    <div class="confirmation-title">To Address:</div>
+                                    <div class="confirmation-data">{{getConfirmationAddress("to")}}</div>
+                                </div>
+                            </div>
+                            <div class="flex-row" ng-if="booking.pickupNotes || booking.deliveryNotes">
+                                <div class="half-width confirmation-border">
+                                    <div class="confirmation-title">Pickup Notes:</div>
+                                    <div class="confirmation-data" ng-if="booking.pickupNotes">{{booking.pickupNotes}}</div>
+                                </div>
+
+                                <div class="half-width confirmation-border">
+                                    <div class="confirmation-title">Delivery Notes:</div>
+                                    <div class="confirmation-data" ng-if="booking.deliveryNotes">{{booking.deliveryNotes}}</div>
+                                </div>
+                            </div>
+                            <div class="flex-row confirmation-border">
+                                <div class="half-width">
+                                    <div class="confirmation-title">Quantity:</div>
+                                    <div class="confirmation-data">{{booking.quantity}}</div>
+                                </div>
+                                <div class="half-width">
+                                    <div class="confirmation-title">Dangerous Goods:</div>
+                                    <div class="confirmation-data">{{booking.dangerousGoods == true ? "Yes - Class " + booking.dangerousGoodsClass : "No"}}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div></div>
+                </div>
+                <div class="desktop-group" style="width:50%">
+                    <div>
+                        <div class="booking-title">
+                            <div class="booking-title-text">Job Data</div>
+                        </div>
+                    </div>
+
+                    <div class="extra-grouping">
+                        <div class="input-group">
+                            <div>
+                                <div style="text-align:center;font-weight:bold;">Please print your label{{getTotalQuantity() === 1 ? '' : 's'}} and attach it to your package{{getTotalQuantity() === 1 ? '' : 's'}}!</div>
+                            </div>
+
+                            <div style="height:16px"></div>
+
+                            <label>Job Number:</label>
+                            <div class="single-address">
+                                <div class="desktop-payload">
+                                    <div class="address-component">
+                                        <input type="text" class="data-input" ng-model="jobData.jobNumber" disabled />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="height:16px"></div>
+
+                            <label>Tracking Link:</label>
+                            <div class="single-address">
+                                <div class="desktop-payload">
+                                    <div class="address-component center-a">
+                                        <a href="" ng-click="openNewTab(jobData.trackingUrl)">View your tracking here</a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="height:16px"></div>
+
+                            <label>Print Label:</label>
+                            <div class="single-address">
+                                <div class="desktop-payload">
+                                    <div class="address-component center-a">
+                                        <a href="" ng-click="openLabelModal(null, jobData.jobID)">Print your Label</a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="height:16px"></div>
+
+                            <label>Cancel Job:</label>
+                            <div class="single-address">
+                                <div class="desktop-payload">
+                                    <div class="address-component center-a">
+                                        <a href="" ng-click="deleteJob(jobData.jobID, jobData.jobNumber)">Cancel This Job</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div></div>
+                </div>
+            </div>
+
+            <button class="confirm-button" ng-disabled="false" ng-class="{'disabled-Button': false}" ng-click="clearAll()">Book Another?</button>
+        </div>
+    </div>
+
+    <!--Time Select Modal-->
+
+    <div class="time-modal modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" style="top:25%" role="document">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Select Prebook Time</h5></div>
+                <div class="modal-body">
+                    Please select the date and time that your delivery will be ready for collection.
+
+                    <div style="height:16px;"></div>
+
+                    <div class="extra-grouping">
+                        <div class="input-group">
+                            <label>Pickup Date:</label>
+                            <div class="single-address">
+                                <div class="desktop-payload">
+                                    <div class="address-component">
+                                        <input type="date" min="{{minDate}}" max="{{maxDate}}" class="data-input" ng-model="booking.deliveryDate" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="height:16px"></div>
+
+                            <label>Pickup Time:</label>
+                            <div class="single-address">
+                                <div class="desktop-payload">
+                                    <div class="address-component">
+                                        <input type="time" class="data-input" ng-model="booking.deliveryTime" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="prompt-footer">
+                    <div class="alert alert-danger error" role="alert" style="margin-bottom:0px" ng-show="time.errors.length > 0">
+                        <div ng-repeat="error in time.errors track by $index">{{error}}</div>
+                    </div>
+
+                    <button class="prompt-button prompt-button-confirm fas fa-edit" ng-click="checkTimeData()"><span class="prompt-button-text">CONFIRM</span></button>
+                    <button class="prompt-button prompt-button-cancel fas fa-undo" data-dismiss="modal" ng-click="clearTime()"><span class="prompt-button-text">RESET</span></button>
+                    <button class="prompt-button prompt-button-cancel fas fa-times" data-dismiss="modal" ng-click="timeBack()"><span class="prompt-button-text">CLOSE</span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--Print Label Model-->
+
+    <div class="printLabel-modal modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" style="top:30%" role="document">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Print your Label</h5></div>
+                <div class="modal-body">
+                    Please select a label size and press 'PRINT'.
+
+                    <div style="margin-top:10px;">
+                        <label>Label Size:</label>
+                        <select class="data-input" ng-model="booking.labelSize" ng-options="labelSize.value as labelSize.name for labelSize in labelSizes">
+                            <option value="" selected>PDF (A4)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="prompt-footer">
+                    <i class="prompt-button prompt-button-confirm fas fa-print" data-dismiss="modal" ng-click="printLabel(thisJob.id)"><span class="prompt-button-text">PRINT</span></i>
+
+                    <i class="prompt-button prompt-button-cancel fas fa-times" data-dismiss="modal"><span class="prompt-button-text">CLOSE</span></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--Quantity Modal-->
+
+    <div class="quantity-modal modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" style="top:30%" role="document">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Update Quantity?</h5></div>
+                <div class="modal-body">
+                    <div class="form-group col-sm-12">
+                        <label>Quantity:</label>
+                        <input class="form-control"
+                               ng-blur="intQuantitySelected()"
+                               ng-model="selectedJob.quantity">
+                    </div>
+                </div>
+                <div class="prompt-footer">
+                    <i class="prompt-button prompt-button-confirm fas fa-check" data-dismiss="modal" ng-click="updateJobQuantity(selectedJob)"><span class="prompt-button-text">CONFIRM</span></i>
+
+                    <i class="prompt-button prompt-button-cancel fas fa-times" data-dismiss="modal"><span class="prompt-button-text">CLOSE</span></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--Cancel Modal-->
+
+    <div class="cancel-modal modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" style="top:30%" role="document">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Cancel this job?</h5></div>
+                <div class="modal-body">
+                    Please confirm you want to cancel this job: {{selectedJob.jobNumber}}
+                </div>
+                <div class="prompt-footer">
+                    <i class="prompt-button prompt-button-confirm fas fa-trash" data-dismiss="modal" ng-click="deleteJob(selectedJob.id, selectedJob.jobNumber)"><span class="prompt-button-text">CANCEL</span></i>
+
+                    <i class="prompt-button prompt-button-cancel fas fa-times" data-dismiss="modal"><span class="prompt-button-text">CLOSE</span></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--Filter Modal-->
+
+    <div class="filter-modal modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" style="top:15%; max-width:800px;" role="document">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Apply Filters</h5></div>
+                <div class="modal-body">
+                    <div class="form-group col-sm-12">
+                        <label>Job Number:</label>
+                        <input class="form-control"
+                               maxlength="15"
+                               ng-model="filter.filters.jobNumber">
+                    </div>
+                    <div class="form-group col-sm-6">
+                        <label>Date From:</label>
+                        <input class="form-control"
+                               type="date"
+                               ng-model="filter.filters.dateFrom">
+                    </div>
+                    <div class="form-group col-sm-6">
+                        <label>Date To:</label>
+                        <input class="form-control"
+                               type="date"
+                               ng-model="filter.filters.dateTo">
+                    </div>
+                    <div class="form-group col-sm-6">
+                        <label>From Suburb:</label>
+                        <select class="form-control"
+                                ng-options="suburb.id as suburb.name for suburb in suburbs"
+                                ng-model="filter.filters.fromSuburbId">
+                            <option value="" selected>--- None Selected ---</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-sm-6">
+                        <label>To Suburb:</label>
+                        <select class="form-control"
+                                ng-options="suburb.id as suburb.name for suburb in suburbs"
+                                ng-model="filter.filters.toSuburbId">
+                            <option value="" selected>--- None Selected ---</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="alert alert-danger error" role="alert" style="margin-bottom:0px" ng-show="filter.errors.length > 0">
+                    <div ng-repeat="error in filter.errors track by $index">{{error}}</div>
+                </div>
+
+                <div class="prompt-footer">
+                    <i class="prompt-button prompt-button-confirm fas fa-edit" ng-click="checkFilters()"><span class="prompt-button-text">APPLY</span></i>
+                    <i class="prompt-button prompt-button-cancel fas fa-eraser" data-dismiss="modal" ng-click="clearAndGetFiltered()"><span class="prompt-button-text">CLEAR</span></i>
+                    <i class="prompt-button prompt-button-cancel fas fa-times" data-dismiss="modal"><span class="prompt-button-text">CLOSE</span></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

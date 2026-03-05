@@ -1,0 +1,302 @@
+﻿<div id="desktop-view">
+
+    <!--Loading screen for main panel-->
+
+    <div class="desktop-panel" ng-if="!clients || saveInProgress == true">
+        <div></div>
+        <div class="loading-panel">
+            <div class="icon">
+                <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+            </div>
+        </div>
+        <div></div>
+    </div>
+
+    <!--Main panel-->
+
+    <div class="desktop-panel" ng-if="clients && step == 'select'">
+
+        <div class="back-bar">
+            <div class="back-button" title="Return to the previous page" onclick="window.history.back();">
+                <i class="fas fa-arrow-left"></i>
+            </div>
+            <h2 style="align-self:center; padding-top:7px;">Clients</h2>
+            <div class="back-button-disabled"></div>
+        </div>
+
+        <div style="align-self:center; width:40%;">
+            <div ng-if="clients.length > 1 || !user.internal">
+                <label>Client:</label>
+                <div class="single-address">
+                    <div class="address-payload">
+                        <div class="address-component">
+                            <select class="data-input" ng-model="user.selectedClient" ng-options="client as client.name for client in clients">
+                                <option value="" disabled selected hidden>Select a client...</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="height:16px;"></div>
+
+            <div ng-if="user.internal">
+                <label>Client Search:</label>
+                <div class="single-address">
+                    <div class="address-payload">
+                        <div class="address-component">
+                            <ui-select ng-model="user.selectedClient"
+                                       ng-change="getThisClient()"
+                                       skip-focusser="true"
+                                       style="width:100%">
+                                <ui-select-match placeholder="Search for a client...">
+                                    <span ng-bind="$select.selected.name + ' - ' + $select.selected.code + ' - ' + $select.selected.americanCity"></span>
+                                </ui-select-match>
+                                <ui-select-choices repeat="client as client in (delayedClients | filter: $select.search | limitTo: 50)" refresh="realResults($select.search)" refresh-delay="0">
+                                    <span ng-bind="client.name + ' - ' + client.code + ' - ' + client.americanCity"></span>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button class="confirm-button" ng-disabled="!user.selectedClient" ng-class="{'disabled-Button': !user.selectedClient}" ng-click="editClient()">Edit Client</button>
+    </div>
+
+    <div class="desktop-panel" ng-if="step == 'edit' && saveInProgress != true">
+        <div>
+            <div class="back-bar">
+                <div class="back-button" title="Change selected client" ng-click="clientBack()">
+                    <i class="fas fa-arrow-left"></i>
+                </div>
+                <h2 style="align-self:center; padding-top:7px;">Edit Client</h2>
+                <div class="back-button-disabled"></div>
+            </div>
+
+            <div style="display:flex;flex-direction:row;justify-content:space-between;">
+                <div class="savedBooking-buttons" style="width:50%" ng-class="{selected: page == 'client'}" ng-click="setPage('client')">Client</div>
+                <div class="savedBooking-buttons" style="width:51%" ng-class="{selected: page == 'clientSettings'}" ng-click="setPage('clientSettings')">Client Settings</div>
+            </div>
+        </div>
+
+        <div ng-if="page == 'client'">
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">Company Name:</label>
+                <label class="control-label col-sm-6">Legal Name:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="75" placeholder="Enter your company's name..." ng-model="user.selectedClient.name" />
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="150" placholder="Enter your company's legal name..." ng-model="user.selectedClient.legalName" />
+                </div>
+            </div>
+
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">Company Phone:</label>
+                <label class="control-label col-sm-6">Accounts Email:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="20" ng-model="user.selectedClient.phone" />
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="200" placeholder="Enter your company's invoice email..." ng-model="user.selectedClient.invoiceEmail" />
+                </div>
+            </div>
+
+            <div class="form-group fixed-height">
+                <div class="col-sm-12">
+                    <label class="control-label">Address Search:</label>
+                    <div class="input-group" style="flex-direction:row;padding-left:0px;padding-right:0px;">
+                        <input class="form-control" type="text" id="addressGpsSearch" ng-map-autocomplete ng-model="user.selectedClient.addressSearch" ng-change="checkEmpty()"
+                               options='autocompleteOptions' ng-model-options='{"debounce": 1000}' details="user.addressDetails" placeholder="Search for your company's address..." />
+                        <div class="input-group-append">
+                            <button class="input-group-text" ng-click="clearAddressSearch()">Clear</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">Street Address:</label>
+                <label class="control-label col-sm-6">{{countryCode != 'NZ' ? "City:" : "Suburb:"}}</label>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="200" placeholder="Enter your company's street address..." ng-model="user.selectedClient.address" />
+                </div>
+                <div class="col-sm-6 pad-bottom" ng-if="countryCode != 'NZ'">
+                    <input class="form-control" maxlength="255" placeholder="Enter your company's city..." ng-model="user.selectedClient.americanCity" />
+                </div>
+                <div class="col-sm-6 pad-bottom" ng-if="countryCode == 'NZ'">
+                    <select class="form-control" ng-model="user.selectedClient.suburbId" ng-options="suburb.id as suburb.name for suburb in suburbs"></select>
+                </div>
+            </div>
+
+            <div class="form-group fixed-height" ng-if="countryCode != 'NZ'">
+                <label class="control-label col-sm-12">State:</label>
+                <div class="col-sm-12 pad-bottom">
+                    <input class="form-control" maxlength="200" placeholder="Enter your company's state..." ng-model="user.selectedClient.americanState" />
+                </div>
+            </div>
+
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">{{countryCode != "NZ" ? "Zip" : "Post"}} Code:</label>
+                <label class="control-label col-sm-6">Unit/Flat/Floor/Building:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="255" placeholder="Enter your company's zip code..." ng-model="user.selectedClient.americanZipCode" />
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="200" placeholder="E.g. Unit 3, Building D4" ng-model="user.selectedClient.americanExtras" />
+                </div>
+            </div>
+
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">Pickup Notes:</label>
+                <label class="control-label col-sm-6">Postal Address:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <textarea class="form-control" maxlength="550" rows="2" placeholder="Enter any extra address information..." ng-model="user.selectedClient.extraInfo"></textarea>
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <textarea class="form-control" maxlength="550" rows="2" placeholder="Enter any postal address information..." ng-model="user.selectedClient.postal"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div ng-if="page == 'clientSettings'">
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">Reference A Mandatory:</label>
+                <label class="control-label col-sm-6">Reference B Mandatory:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <input type="checkbox" ng-model="user.selectedClient.referenceAMandatory" />
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <input type="checkbox" ng-model="user.selectedClient.referenceBMandatory" />
+                </div>
+            </div>
+
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">Reference A Description:</label>
+                <label class="control-label col-sm-6">Reference B Description:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="500" placeholder="Enter a name to show with Reference A..." ng-model="user.selectedClient.referenceAMessage" />
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <input class="form-control" maxlength="500" placeholder="Enter a name to show with Reference B..." ng-model="user.selectedClient.referenceBMessage" />
+                </div>
+            </div>
+
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">Reference A List:</label>
+                <label class="control-label col-sm-6">Reference B List:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <label style="cursor:pointer;text-decoration:underline;color:#f9c43e;" ng-click="openReferenceModal('A')">Add / Edit</label>
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <label style="cursor:pointer;text-decoration:underline;color:#f9c43e;" ng-click="openReferenceModal('B')">Add / Edit</label>
+                </div>
+            </div>
+
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-6">Reference A Must Choose From List:</label>
+                <label class="control-label col-sm-6">Reference B Must Choose From List:</label>
+                <div class="col-sm-6 pad-bottom">
+                    <input type="checkbox" ng-model="user.selectedClient.referenceADefineList" />
+                </div>
+                <div class="col-sm-6 pad-bottom">
+                    <input type="checkbox" ng-model="user.selectedClient.referenceBDefineList" />
+                </div>
+            </div>
+
+            <div class="form-group fixed-height">
+                <label class="control-label col-sm-12">Signature Not Required Default:</label>
+                <div class="col-sm-12 pad-bottom">
+                    <select class="form-control" ng-model="user.selectedClient.sigRequiredDefault" ng-options="sigNotRequired.value as sigNotRequired.value for sigNotRequired in sigNotRequireds">
+                        <option value="" selected>Currently Signature Required</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="alert alert-danger error" role="alert" style="margin-bottom:0px" ng-show="user.errors.length > 0">
+                <div ng-repeat="error in user.errors track by $index">{{error}}</div>
+            </div>
+
+            <!-- Need to check if errythang is valid before updating -->
+            <button class="confirm-button" ng-disabled="false" ng-class="{'disabled-Button': false}" ng-click="checkFormData()">Save Changes</button>
+        </div>
+    </div>
+
+    <!--Reference List Modal-->
+
+    <div class="referenceA-modal modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" style="top:17.5%" role="document">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Add/Edit Reference A List</h5></div>
+                <div class="modal-body">
+                    <label>Add and remove references with the plus and minus buttons, then save when done. 'Close' will revert any unsaved changes.</label>
+                    <table class="table-container" style="width:100%">
+                        <tbody>
+                            <tr>
+                                <th class="table-title">Name</th>
+                                <th class="table-title">
+                                    <i class="fas fa-plus-circle" title="Add a new row to the reference table" ng-click="addReference('A')"></i>
+                                </th>
+                            </tr>
+                            <tr dir-paginate="reference in referencesA | itemsPerPage: 10 track by $index" pagination-id="paginate1">
+                                <td class="table-content">
+                                    <input ng-model="reference.name" />
+                                </td>
+                                <td class="table-content">
+                                    <i class="fas fa-minus-circle" title="Remove this row from the reference table" ng-click="removeReference('A', reference.id)"></i>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div style="display:flex;justify-content:center;">
+                        <dir-pagination-controls pagination-id="paginate1" on-page-change="pageChanged(newPageNumber)"></dir-pagination-controls>
+                    </div>
+                </div>
+                <div class="prompt-footer">
+                    <i class="prompt-button prompt-button-confirm fas fa-edit" data-dismiss="modal" ng-click="saveReferenceChanges('A')"><span class="prompt-button-text">SAVE</span></i>
+                    <i class="prompt-button prompt-button-cancel fas fa-times" data-dismiss="modal" ng-click="revertReferenceChanges('A')"><span class="prompt-button-text">CLOSE</span></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="referenceB-modal modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" style="top:17.5%" role="document">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Add/Edit Reference B List</h5></div>
+                <div class="modal-body">
+                    <label>Add and remove references with the plus and minus buttons, then save when done. 'Close' will revert any unsaved changes.</label>
+                    <table class="table-container" style="width:100%">
+                        <tbody>
+                            <tr>
+                                <th class="table-title">Name</th>
+                                <th class="table-title">
+                                    <i class="fas fa-plus-circle" title="Add a new row to the reference table" ng-click="addReference('B')"></i>
+                                </th>
+                            </tr>
+                            <tr dir-paginate="reference in referencesB | itemsPerPage: 10 track by $index" pagination-id="paginate2">
+                                <td class="table-content">
+                                    <input ng-model="reference.name" />
+                                </td>
+                                <td class="table-content">
+                                    <i class="fas fa-minus-circle" title="Remove this row from the reference table" ng-click="removeReference('B', reference.id)"></i>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div style="display:flex;justify-content:center;">
+                        <dir-pagination-controls pagination-id="paginate2" on-page-change="pageChanged(newPageNumber)"></dir-pagination-controls>
+                    </div>
+                </div>
+                <div class="prompt-footer">
+                    <i class="prompt-button prompt-button-confirm fas fa-edit" data-dismiss="modal" ng-click="saveReferenceChanges('B')"><span class="prompt-button-text">SAVE</span></i>
+                    <i class="prompt-button prompt-button-cancel fas fa-times" data-dismiss="modal" ng-click="revertReferenceChanges('B')"><span class="prompt-button-text">CLOSE</span></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

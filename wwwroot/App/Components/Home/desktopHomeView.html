@@ -1,0 +1,1832 @@
+﻿<div id="desktop-view">
+    <!--Loading screen for main panel-->
+
+    <div class="desktop-panel" ng-if="!clients || !booking.clientAddressGeocoded">
+        <div></div>
+        <div class="loading-panel">
+            <div class="icon">
+                <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+            </div>
+        </div>
+        <div></div>
+    </div>
+
+    <!--Main panel-->
+
+    <div ng-if="clients">
+
+        <!--Select client section-->
+
+        <div class="desktop-panel" ng-if="step == 'client'">
+            <div class="back-bar">
+                <!--<div class="back-button" title="Go to the mobile version of this page" ng-click="$state.go('mobile')">Mobile Version</div>-->
+                <div class="back-button"></div> <!--Remove when adding back mobile button-->
+                <button class="clear-button" title="Reset your client/user selection" ng-click="clearClient()">Clear</button>
+            </div>
+
+            <div class="input-group" style="align-self:center; width:40%;">
+                <div class="booking-title" style="align-self:center">
+                    <div class="booking-title-text">Who are you booking as?</div>
+                </div>
+
+                <div ng-if="clients.length > 1 || !internal">
+                    <label>Client:</label>
+                    <div class="single-address">
+                        <div class="desktop-payload">
+                            <div class="address-component">
+                                <select class="data-input" ng-model="booking.client" ng-change="initClient('all')" ng-options="client as client.name for client in clients">
+                                    <option value="" disabled selected hidden>Select a client...</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="height:16px;"></div>
+                </div>
+
+                <div ng-if="internal">
+                    <label>Client Search:</label>
+                    <div class="single-address">
+                        <div class="desktop-payload">
+                            <div class="address-component">
+                                <ui-select ng-model="booking.client"
+                                           ng-change="initClient('all')"
+                                           skip-focusser="true"
+                                           style="width:100%">
+                                    <ui-select-match placeholder="Search for a client...">
+                                        <span ng-bind="$select.selected.name + ' - ' + $select.selected.code + ' - ' + $select.selected.americanCity"></span>
+                                    </ui-select-match>
+                                    <ui-select-choices repeat="client as client in (delayedClients | filter: $select.search | limitTo: 50)" refresh="realResults($select.search)" refresh-delay="0">
+                                        <span ng-bind="client.name + ' - ' + client.code + ' - ' + client.americanCity"></span>
+                                    </ui-select-choices>
+                                </ui-select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="height:16px;"></div>
+                </div>
+
+                <button style="width:100%" ng-disabled="!booking.client" ng-if="!isCreditCardClient()" ui-sref="client"><b>Edit Client Settings</b></button> <!---->
+
+                <div ng-if="booking.client.contacts != null && booking.client.contacts.length >= 1 && booking.client && !isCreditCardClient()">
+                    <div style="height:16px;"></div>
+
+                    <label>User:</label>
+                    <div class="single-address">
+                        <div class="desktop-payload">
+                            <div class="address-component">
+                                <select class="data-input" ng-model="booking.clientContact" ng-options="contact as (contact.name + (contact.jobTitle ? ' - ' + contact.jobTitle : '')) for contact in booking.client.contacts">
+                                    <option value="" disabled selected hidden>--- None Selected ---</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="height:16px;"></div>
+
+                    <button style="width:100%" ng-disabled="!booking.client" ui-sref="contact"><b>Add/Edit Users</b></button>
+                </div>
+
+                <div ng-if="booking.client && isCreditCardClient()">
+                    <label>{{booking.client.id != 35957 ? "Your" : "Client's"}} Name:</label>
+                    <div class="single-address">
+                        <div class="desktop-payload" id="creditCardNameBorder">
+                            <div class="address-component">
+                                <input class="data-input" id="creditCardName" ng-model="booking.clientContact.name">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="height:16px;"></div>
+
+                    <label>{{booking.client.id != 35957 ? "Your" : "Client's"}} Mobile:</label>
+                    <div class="single-address">
+                        <div class="desktop-payload">
+                            <div class="address-component">
+                                <input class="data-input" ng-model="booking.clientContact.mobile">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="height:16px;"></div>
+
+                    <label>{{booking.client.id != 35957 ? "Your" : "Client's"}} Email:</label>
+                    <div class="single-address">
+                        <div class="desktop-payload" id="creditCardEmailBorder">
+                            <div class="address-component">
+                                <input class="data-input" id="creditCardBorder" ng-model="booking.clientContact.email">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="text-align:center; margin-top:6px;" ng-if="internal && booking.client.id != 35957">
+                        <label>Please book on the CRECI - Credit Card Internal account if this is a cash or phone booking!</label>
+                    </div>
+                </div>
+
+                <div style="width:100%" ng-if="savedJobs != null && savedJobs.length > 1 && booking.client && !isCreditCardClient()">
+                    <div style="height:16px;"></div>
+
+                    <label>Saved Booking:</label>
+                    <div class="single-address">
+                        <div class="desktop-payload">
+                            <div class="address-component">
+                                <ui-select ng-model="booking.savedBooking"
+                                           skip-focusser="true"
+                                           style="width:100%">
+                                    <ui-select-match placeholder="Search for a saved booking...">
+                                        <span ng-bind="$select.selected.name"></span>
+                                    </ui-select-match>
+                                    <ui-select-choices repeat="savedJob as savedJob in (savedJobs | filter: { name: $select.search })">
+                                        <span ng-bind="savedJob.name"></span>
+                                    </ui-select-choices>
+                                </ui-select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div ng-if="booking.client && !booking.client.bookJobPermission">
+                <div style="height:16px;"></div>
+
+                <div style="padding-left:16px;padding-right:16px;font-size:small;text-align:center">
+                    <label>Sorry! This client will not be able to book jobs until they have a payment method set up. Please get them to fill in a trade app or visit this page and enter credit card info using the below button.</label>
+                    <button class="stripe-button" ng-click="createStripeCustomer()">Save Payment Info</button>
+                </div>
+            </div>
+
+            <div style="height:16px;"></div>
+
+            <div>
+                <div class="alert alert-danger error" role="alert" style="margin-bottom:0px; text-align:center; padding: 7px 7px;" ng-show="creditCard.errors.length > 0">
+                    <div ng-repeat="error in creditCard.errors track by $index">{{error}}</div>
+                </div>
+
+                <button class="confirm-button" ng-disabled="!booking.client || !booking.clientContact || !creditCardDataFilled() || !booking.client.bookJobPermission"
+                        ng-class="{'disabled-Button': !booking.client || !booking.clientContact || !creditCardDataFilled() || !booking.client.bookJobPermission}" ng-click="checkCreditCard()">
+                    Confirm Client & Contact
+                </button>
+            </div>
+        </div>
+
+        <!--Choose address & main section-->
+
+        <div class="desktop-panel" ng-show="step == 'address' && booking.clientAddressGeocoded && !jobLoading && !savedBookingSaveInProgress">
+            <div class="back-bar">
+                <div class="back-button" title="Change who you are booking as" ng-click="clientBack()" ng-if="clients.length > 1 || internal || isCreditCardClient()">
+                    <i class="fas fa-arrow-left"></i>
+                </div>
+                <div class="back-button-disabled" ng-if="clients.length == 1 && !internal && !isCreditCardClient()"></div>
+
+                <div style="display:flex;flex-direction:row;align-items:center;width:25%;" ng-if="!isCreditCardClient()">
+                    <ui-select ng-model="booking.savedBooking"
+                               ng-change="setSavedBooking()"
+                               skip-focusser="true"
+                               class="desktop-saved-booking">
+                        <ui-select-match placeholder="Search for a saved booking...">
+                            <span ng-bind="$select.selected.name"></span>
+                        </ui-select-match>
+                        <ui-select-choices repeat="savedJob as savedJob in (savedJobs | filter: { name: $select.search })">
+                            <span ng-bind="savedJob.name"></span>
+                        </ui-select-choices>
+                    </ui-select>
+
+                    <a href="" style="margin-left:8px;" ng-click="updateOrCreateSavedBooking()" ng-if="booking.savedBookingSet">Update</a>
+                    <a href="" style="margin-left:8px;" ng-click="openCreateSavedBookingModal()" ng-if="!booking.savedBookingSet">Add</a>
+                </div>
+
+                <div class="back-text">
+                    Booking as {{booking.client.code}}<br />{{booking.client.name}}
+                </div>
+
+                <div style="display:flex;flex-direction:row;align-items:center;width:25%;" ng-if="!isCreditCardClient()"></div>
+
+                <button class="clear-button" title="Reset this booking" ng-click="resetAll()">Reset</button>
+            </div>
+
+            <div style="display:flex;flex-direction:row;height:100%;align-items:center;">
+                <div class="desktop-group">
+                    <div class="sendto-grouping">
+                        <div class="flex-row">
+                            <div class="address-group" style="width:100%">
+                                <h5 class="bolder desktop-zero-margin">PICK UP FROM</h5>
+
+                                <div class="flex-row flex-between">
+                                    <label class="desktop-zero-margin">
+                                        From:
+                                        <label class="desktop-zero-margin" style="cursor:pointer;" ng-if="booking.fromCompanyName" ng-click="toggleCompanyName('from', true)" title="Edit the company name">{{booking.fromCompanyName}}</label>
+                                        <label class="desktop-zero-margin add-company" ng-if="booking.fromDetails && !booking.fromCompanyName" ng-click="toggleCompanyName('from', true)">Add Company Name</label>
+                                    </label>
+                                    <div class="swap-address-button" ng-click="clearFullFrom()" title="Clear the 'from' address">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </div>
+                                </div>
+                                <div class="single-address" ng-if="showFromCompany">
+                                    <div class="desktop-payload">
+                                        <div class="address-component">
+                                            <input class="desktop-input" type="text" id="fromCompany" ng-blur="toggleCompanyName('from', false)" ng-model="booking.fromCompanyName" placeholder="Pickup Company Name..." />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="single-address">
+                                    <div class="desktop-payload" id="fromAddress">
+                                        <div class="address-component" ng-if="booking.searchType == 'Google'">
+                                            <input class="desktop-input" type="text" id="fromBookingGpsSearch" ng-focus="booking.fromFocused = true" ng-blur="booking.fromFocused = false" ng-map-autocomplete ng-model="booking.fromSearch"
+                                                   options="fromAutocompleteOptions" ng-model-options='{"debounce": 1000}' ng-change="checkEmpty('from')" details="booking.fromDetails" placeholder="Pickup address or business name..." />
+                                            <div class="close-icon" ng-click="clearAddress('from')" ng-style="{visibility: booking.fromSearch && booking.fromFocused ? 'visible' : 'hidden'}">
+                                                <i class="fas fa-times-circle"></i>
+                                            </div>
+                                        </div>
+                                        <div class="address-component" style="width:100%;position:relative;" ng-if="booking.searchType == 'AddressBook'">
+                                            <input class="desktop-input" type="text" id="fromBookingGpsSearch" ng-focus="booking.fromFocused = true" ng-blur="booking.fromFocused = false" ng-model="booking.fromSearch"
+                                                   ng-model-options='{"debounce": 1000}' ng-change="getAddressBookSuggestions(booking.fromSearch, 'from')" placeholder="Search your address book..." autocomplete="off" />
+                                            <ul ng-if="booking.fromAddressBookSuggestions && booking.fromSearch" class="kerran-datalist" ng-style="{visibility: booking.fromSearch && booking.fromFocused ? 'visible' : 'hidden'}" tabindex="0" id="fromList">
+                                                <li ng-repeat="address in booking.fromAddressBookSuggestions | orderBy: 'code'" ng-click="setAddressDetails(address, 'from')" class="kerran-datalist-option" tabindex="-1">
+                                                    <i class="fas fa-map-marker-alt" style="padding-right:5px"></i>{{address.code ? address.code + ' - ' : ''}}{{address.deliverTo}}
+                                                </li>
+                                            </ul>
+
+                                            <div class="close-icon" ng-click="clearAddress('from')" ng-style="{visibility: booking.fromSearch && booking.fromFocused ? 'visible' : 'hidden'}">
+                                                <i class="fas fa-times-circle"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <label class="desktop-zero-margin">Extra From Info:</label>
+                                <div class="single-address">
+                                    <div class="desktop-payload">
+                                        <div class="address-component">
+                                            <input class="desktop-input" type="text" ng-focus="booking.fromExtraFocused = true" ng-blur="booking.fromExtraFocused = false" ng-model="booking.fromExtra" placeholder="Company, Unit, Flat, Floor, Building etc..." />
+                                            <div class="close-icon" ng-click="booking.fromExtra = null" ng-style="{visibility: booking.fromExtra && booking.fromExtraFocused ? 'visible' : 'hidden'}">
+                                                <i class="fas fa-times-circle"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <label class="desktop-zero-margin">Pickup Contact Name: *</label>
+                                <div class="single-address">
+                                    <div class="desktop-payload" id="pickupContactBorder">
+                                        <div class="address-component">
+                                            <input type="text" class="desktop-input" id="pickupContact" maxlength="100" ng-model="booking.pickupContact" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <label class="desktop-zero-margin">Pickup Contact Phone:</label>
+                                <div class="single-address">
+                                    <div class="desktop-payload">
+                                        <div class="address-component">
+                                            <input type="text" class="desktop-input" maxlength="100" ng-model="booking.pickupPhone" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <label class="desktop-zero-margin">Pickup Notes:</label>
+                                <div class="single-address">
+                                    <div class="desktop-payload">
+                                        <div class="address-component">
+                                            <textarea rows="1" class="desktop-input" maxlength="2000" ng-model="booking.pickupNotes" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Pickup Accessorials -->
+                                <div class="accessorial-collapse-section" style="margin-top: 8px;">
+                                    <div class="accessorial-toggle" ng-click="pickupAccessorialsOpen = !pickupAccessorialsOpen"
+                                         style="cursor:pointer; display:flex; align-items:center; justify-content:space-between; padding:6px 10px; background:#f5f5f5; border:1px solid #ddd; border-radius:4px;">
+                                        <span style="font-size:13px; font-weight:600; color:#333;">
+                                            <i class="fas fa-plus-circle" ng-if="!pickupAccessorialsOpen" style="margin-right:5px; color:#3EAFC2;"></i>
+                                            <i class="fas fa-minus-circle" ng-if="pickupAccessorialsOpen" style="margin-right:5px; color:#3EAFC2;"></i>
+                                            Pickup Accessorials
+                                            <span style="font-weight:400; color:#888;" ng-if="getSelectedPickupAccessorials().length > 0">({{getSelectedPickupAccessorials().length}} selected)</span>
+                                        </span>
+                                    </div>
+                                    <div ng-if="pickupAccessorialsOpen" style="border:1px solid #ddd; border-top:none; border-radius:0 0 4px 4px; padding:8px 10px; background:#fff;">
+                                        <div ng-repeat="acc in pickupAccessorials" style="padding:4px 0; display:flex; align-items:center;">
+                                            <label style="margin:0; font-weight:400; font-size:13px; display:flex; align-items:center; cursor:pointer; width:100%;">
+                                                <input type="checkbox" ng-model="acc.selected" style="margin-right:8px; transform:scale(1.2);" />
+                                                <span style="flex:1;">{{acc.name}}</span>
+                                                <span style="color:#666; font-size:12px;" ng-if="acc.amount > 0">${{acc.amount.toFixed(2)}}</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sendto-grouping">
+                        <div class="flex-row">
+                            <div class="address-group" style="width:100%">
+                                <h5 class="bolder desktop-zero-margin">DELIVER TO</h5>
+                                <div style="font-size:12px;" ng-if="countryCode == 'NZ' && addressBook.length > 0">
+                                    <label style="padding-right:6px;">Search:</label>
+                                    <input type="radio" id="google" name="searchType" value="Google" ng-change="searchTypeChanged()" ng-model="booking.searchType" />
+                                    <label for="google">Google</label>
+                                    <input type="radio" id="addressBook" name="searchType" value="AddressBook" ng-change="searchTypeChanged()" ng-model="booking.searchType" />
+                                    <label for="addressBook">Address Book</label>
+                                </div>
+                                <div class="flex-row flex-between">
+                                    <label class="desktop-zero-margin">
+                                        To:
+                                        <label class="desktop-zero-margin" style="cursor:pointer;" ng-if="booking.toCompanyName" ng-click="toggleCompanyName('to', true)" title="Edit the company name">{{booking.toCompanyName}}</label>
+                                        <label class="desktop-zero-margin add-company" ng-if="booking.toDetails && !booking.toCompanyName" ng-click="toggleCompanyName('to', true)">Add Company Name</label>
+                                    </label>
+                                    <div class="swap-address-button" ng-click="swapToFromAddress()" title="Swap the 'to' and 'from' addresses">
+                                        <i style="transform:rotate(90deg)" class="fas fa-exchange-alt"></i>
+                                    </div>
+                                </div>
+                                <div class="single-address" ng-if="showToCompany">
+                                    <div class="desktop-payload">
+                                        <div class="address-component">
+                                            <input class="desktop-input" type="text" id="toCompany" ng-blur="toggleCompanyName('to', false)" ng-model="booking.toCompanyName" placeholder="Destination Company Name..." />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="single-address">
+                                    <div class="desktop-payload" id="toAddress">
+                                        <div class="address-component" ng-if="booking.searchType == 'Google'">
+                                            <input class="desktop-input" type="text" id="toBookingGpsSearch" ng-focus="booking.toFocused = true" ng-blur="booking.toFocused = false" ng-map-autocomplete ng-model="booking.toSearch"
+                                                   options="toAutocompleteOptions" ng-model-options='{"debounce": 1000}' ng-change="checkEmpty('to')" details="booking.toDetails" placeholder="Destination address or business name..." />
+                                            <div class="close-icon" ng-click="clearAddress('to')" ng-style="{visibility: booking.toSearch && booking.toFocused ? 'visible' : 'hidden'}">
+                                                <i class="fas fa-times-circle"></i>
+                                            </div>
+                                        </div>
+                                        <div class="address-component" style="width:100%;position:relative;" ng-if="booking.searchType == 'AddressBook'">
+                                            <input class="desktop-input" type="text" id="toBookingGpsSearch" ng-focus="booking.toFocused = true" ng-blur="booking.toFocused = false" ng-model="booking.toSearch"
+                                                   ng-model-options='{"debounce": 1000}' ng-change="getAddressBookSuggestions(booking.toSearch, 'to')" placeholder="Search your address book..." autocomplete="off" />
+                                            <ul ng-if="booking.toAddressBookSuggestions && booking.toSearch" class="kerran-datalist" ng-style="{visibility: booking.toSearch && booking.toFocused ? 'visible' : 'hidden'}" tabindex="0" id="toList">
+                                                <li ng-repeat="address in booking.toAddressBookSuggestions | orderBy: 'code'" ng-click="setAddressDetails(address, 'to')" class="kerran-datalist-option" tabindex="-1">
+                                                    <i class="fas fa-map-marker-alt" style="padding-right:5px"></i>{{address.code ? address.code + ' - ' : ''}}{{address.deliverTo}}
+                                                </li>
+                                            </ul>
+
+                                            <div class="close-icon" ng-click="clearAddress('to')" ng-style="{visibility: booking.toSearch && booking.toFocused ? 'visible' : 'hidden'}">
+                                                <i class="fas fa-times-circle"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <label class="desktop-zero-margin">Extra To Info:</label>
+                                <div class="single-address">
+                                    <div class="desktop-payload">
+                                        <div class="address-component">
+                                            <input class="desktop-input" type="text" ng-focus="booking.toExtraFocused = true" ng-blur="booking.toExtraFocused = false" ng-model="booking.toExtra" placeholder="Company, Unit, Flat, Floor, Building etc..." />
+                                            <div class="close-icon" ng-click="booking.toExtra = null" ng-style="{visibility: booking.toExtra && booking.toExtraFocused ? 'visible' : 'hidden'}">
+                                                <i class="fas fa-times-circle"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <label class="desktop-zero-margin">Delivery Contact Name:</label>
+                                <div class="single-address">
+                                    <div class="desktop-payload">
+                                        <div class="address-component">
+                                            <input type="text" class="desktop-input" maxlength="100" ng-model="booking.deliveryContact" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <label class="desktop-zero-margin">Delivery Contact Phone:</label>
+                                <div class="single-address">
+                                    <div class="desktop-payload">
+                                        <div class="address-component">
+                                            <input type="text" class="desktop-input" maxlength="100" ng-model="booking.deliveryPhone" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <label class="desktop-zero-margin">Delivery Notes: {{booking.sigNotRequired == "Other (add to 'Delivery Notes')" ? "*" : ""}}</label>
+                                <div class="single-address">
+                                    <div class="desktop-payload" id="deliveryNotesBorder">
+                                        <div class="address-component">
+                                            <textarea rows="1" class="desktop-input" id="deliveryNotes" maxlength="2000" ng-model="booking.deliveryNotes" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Delivery Accessorials -->
+                                <div class="accessorial-collapse-section" style="margin-top: 8px;">
+                                    <div class="accessorial-toggle" ng-click="deliveryAccessorialsOpen = !deliveryAccessorialsOpen"
+                                         style="cursor:pointer; display:flex; align-items:center; justify-content:space-between; padding:6px 10px; background:#f5f5f5; border:1px solid #ddd; border-radius:4px;">
+                                        <span style="font-size:13px; font-weight:600; color:#333;">
+                                            <i class="fas fa-plus-circle" ng-if="!deliveryAccessorialsOpen" style="margin-right:5px; color:#3EAFC2;"></i>
+                                            <i class="fas fa-minus-circle" ng-if="deliveryAccessorialsOpen" style="margin-right:5px; color:#3EAFC2;"></i>
+                                            Delivery Accessorials
+                                            <span style="font-weight:400; color:#888;" ng-if="getSelectedDeliveryAccessorials().length > 0">({{getSelectedDeliveryAccessorials().length}} selected)</span>
+                                        </span>
+                                    </div>
+                                    <div ng-if="deliveryAccessorialsOpen" style="border:1px solid #ddd; border-top:none; border-radius:0 0 4px 4px; padding:8px 10px; background:#fff;">
+                                        <div ng-repeat="acc in deliveryAccessorials" style="padding:4px 0; display:flex; align-items:center;">
+                                            <label style="margin:0; font-weight:400; font-size:13px; display:flex; align-items:center; cursor:pointer; width:100%;">
+                                                <input type="checkbox" ng-model="acc.selected" style="margin-right:8px; transform:scale(1.2);" />
+                                                <span style="flex:1;">{{acc.name}}</span>
+                                                <span style="color:#666; font-size:12px;" ng-if="acc.amount > 0">${{acc.amount.toFixed(2)}}</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="desktop-group">
+                    <div class="sendto-grouping">
+                        <h5 class="bolder desktop-zero-margin">PACKAGE</h5>
+
+                        <div class="address-icon" style="justify-content:space-between;">
+                            <label class="desktop-zero-margin">Vehicle:</label>
+                            <div class="single-address">
+                                <div class="desktop-payload">
+                                    <div class="address-component">
+                                        <select class="desktop-input" ng-model="booking.vehicle" ng-options="vehicleSize as vehicleSize.name for vehicleSize in vehicleSizes" ng-change="setVehicleStep()">
+                                            <option value="" disabled selected hidden>Select a vehicle...</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="single-icon-button" title="Edit the truck info" id="truckModal" ng-click="openTruckModal()" ng-if="truckSaved && booking.truck">
+                                <i class="fas fa-angle-down"></i>
+                            </div>
+
+                            <div class="single-icon-button" style="visibility:hidden;" ng-if="!truckSaved || !booking.truck"></div>
+                        </div>
+
+                        <div style="height:16px"></div>
+
+                        <div class="double-button">
+                            <button class="single-button-focus" ng-class="{'selected-button': !isManualQuantity}" ng-click="setBasicManual(false)">Standard</button>
+                            <button class="single-button-focus" ng-class="{'selected-button': isManualQuantity}" ng-click="setBasicManual(true)">Custom</button>
+                        </div>
+
+                        <div style="height:16px"></div>
+
+                        <div ng-if="!isManualQuantity">
+                            <label class="desktop-zero-margin">Package Size:</label>
+                            <div class="single-address">
+                                <div class="desktop-payload" id="packageSize">
+                                    <div class="address-component">
+                                        <select class="desktop-input" ng-model="booking.stockSize" ng-options="stockSize as stockSize.name + ' (' + stockSize.length + ' x ' + stockSize.width + ' x ' + stockSize.height + dimsUnit + ' @ ' + stockSize.weight + weightUnit + ')' for stockSize in stockSizes" ng-change="checkIfRatesReady()">
+                                            <option value="" disabled selected hidden>Select a size...</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="height:16px"></div>
+
+                            <div style="display:flex; flex-direction:row; justify-content:space-between">
+                                <div>
+                                    <label class="desktop-zero-margin">Quantity:</label>
+                                    <div class="desktop-quantity-container">
+                                        <div class="single-address">
+                                            <div class="desktop-payload">
+                                                <div class="address-component">
+                                                    <input class="weight-content" ng-model="booking.quantity" ng-blur="intQuantity();checkIfRatesReady()" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="desktop-zero-margin">Total Weight:</label>
+                                    <div class="desktop-quantity-container">
+                                        <div class="single-address">
+                                            <div class="desktop-payload">
+                                                <div class="address-component">
+                                                    <input class="weight-content" ng-blur="setBasicWeight()" ng-model="booking.totalBasicWeight" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div ng-if="isManualQuantity">
+                            <label class="desktop-zero-margin">Custom Dimensions (in {{dimsUnit.toUpperCase()}}):</label>
+                            <table class="table-container" id="customTable">
+                                <tbody>
+                                    <tr>
+                                        <td class="table-title">L</td>
+                                        <td class="table-title">W</td>
+                                        <td class="table-title">H</td>
+                                        <td class="table-title">{{cubicUnit}}</td>
+                                        <td class="table-title">{{weightUnit.toUpperCase()}}</td>
+                                        <td class="table-title">Qty</td>
+                                        <td class="table-title">
+                                            <i class="fas fa-plus-circle" title="Add a row to the quantity table" ng-click="addManualQuantityRow()"></i>
+                                        </td>
+                                    </tr>
+                                    <tr ng-repeat="row in booking.manualQuantity track by $index">
+                                        <td class="desktop-table-content"><input type="number" min="1" class="table-input" ng-model="row.length" ng-blur="checkIfRatesReady();getRowCubicFeet(row)" /></td>
+                                        <td class="desktop-table-content"><input type="number" min="1" class="table-input" ng-model="row.width" ng-blur="checkIfRatesReady();getRowCubicFeet(row)" /></td>
+                                        <td class="desktop-table-content"><input type="number" min="1" class="table-input" ng-model="row.height" ng-blur="checkIfRatesReady();getRowCubicFeet(row)" /></td>
+                                        <td class="desktop-table-content"><input type="number" min="0" class="table-input" ng-model="row.cubic" ng-blur="setCubic(row)" /></td>
+                                        <td class="desktop-table-content"><input type="number" min="1" class="table-input" ng-model="row.weight" ng-blur="checkIfRatesReady()" /></td>
+                                        <td class="desktop-table-content"><input type="number" min="1" class="table-input" ng-model="row.quantity" ng-blur="checkIfRatesReady()" /></td>
+                                        <td class="desktop-table-content">
+                                            <i class="fas fa-minus-circle" title="Remove this row from the quantity table" ng-click="removeManualQuantityRow($index)"></i>
+                                        </td>
+                                    </tr>
+                                    <tr ng-repeat="row in booking.basicQuantity track by $index">
+                                        <td class="desktop-table-content" colspan="{{row.name.includes('Pallet') ? 2 : 3}}">{{row.name}}</td>
+                                        <td class="desktop-table-content" ng-if="row.name.includes('Pallet')"><input type="number" min="1" class="table-input" ng-model="row.height" ng-change="checkIfRatesReady();getRowCubicFeet(row)" /></td>
+                                        <td class="desktop-table-content"><input type="number" min="0" class="table-input" ng-model="row.cubic" ng-blur="setCubic(row)" /></td>
+                                        <td class="desktop-table-content"><input type="number" min="1" class="table-input" ng-model="row.weight" ng-blur="checkIfRatesReady()" /></td>
+                                        <td class="desktop-table-content"><input type="number" min="1" class="table-input" ng-model="row.quantity" ng-blur="checkIfRatesReady()" /></td>
+                                        <td class="desktop-table-content">
+                                            <i class="fas fa-minus-circle" title="Remove this row from the quantity table" ng-click="removeBasicQuantityRow($index)"></i>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="desktop-table-content bold" colspan="3">Total</td>
+                                        <td class="desktop-table-content bold">{{getCubicSumBoth()}}</td>
+                                        <td class="desktop-table-content bold">{{getTotalWeightBoth()}}</td>
+                                        <td class="desktop-table-content bold">{{getTotalQuantityBoth()}}</td>
+                                        <td class="desktop-table-content"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <!-- Toggle Dimensions Type  -->
+                            <div ng-if="isManualQuantity" style="height:16px"></div>
+
+                            <!-- Temporarily remove ng-if for testing -->
+                            <div class="dimensions-type-slider">
+                                <div class="dimensions-slider-container">
+                                    <label class="desktop-zero-margin">Dimensions are:</label>
+                                    <div class="dimensions-toggle-switch" ng-click="toggleDimensionsType()">
+                                        <div class="dimensions-toggle-knob" ng-class="{'dimensions-toggle-active': booking.dimensionsType === 2}"></div>
+                                    </div>
+                                    <div class="dimensions-slider-value">{{booking.dimensionsType === 2 ? 'Per Job' : 'Per Item'}}</div>
+                                </div>
+                                <div class="dimensions-help-text">
+                                    {{booking.dimensionsType === 2 ? 'Currently set to per job - enter total dimensions for the entire job' : 'Currently set to per item - enter dimensions for each individual item'}}
+                                </div>
+                            </div>
+
+                            <div style="height:16px"></div>
+
+                            <label class="desktop-zero-margin">Package Size (add to custom):</label>
+                            <div class="address-icon">
+                                <div class="single-address" style="width:83.33%">
+                                    <div class="desktop-payload">
+                                        <div class="address-component">
+                                            <select class="desktop-input" ng-model="booking.selectedStockSize" ng-change="addBasicQuantityRow()"
+                                                    ng-options="stockSize as stockSize.name + ' (' + stockSize.length + ' x ' + stockSize.width + ' x ' + stockSize.height + dimsUnit + ')' for stockSize in stockSizes">
+                                                <option value="" disabled selected hidden>Select a size...</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="desktop-plus-button-border">
+                                    <i class="fas fa-plus-circle desktop-add-row-icon" title="Add the selected package size to the quantity table" ng-click="addBasicQuantityRow()"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="height:16px"></div>
+
+                        <div class="checkbox-container">
+                            <label class="desktop-zero-margin">Any Dangerous Goods?</label>
+                            <input type="checkbox" ng-model="booking.dangerousGoods" ng-click="dangerousGoodsTrue()" />
+
+                            <div class="single-icon-button" title="Edit the dangerous goods class & document declaration" id="dgModal" ng-click="openDGModal();" ng-if="dgSaved && booking.dangerousGoods">
+                                <i class="fas fa-angle-down"></i>
+                            </div>
+
+                            <div class="single-icon-button" style="visibility:hidden;" ng-if="!dgSaved || !booking.dangerousGoods"></div>
+                        </div>
+
+                        <div style="height:16px"></div>
+                    </div>
+                    <div class="sendto-grouping">
+                        <h5 class="bolder desktop-zero-margin">DATE + TIME</h5>
+                        <div class="ready-time-button" id="timeModal" ng-if="booking.pickupTimeZone" ng-click="openTimeModal()"> <!--Fix this ng-if later-->
+                            <div style="width:16px;"></div>
+                            <div>{{timeSaved ? (booking.holdJob ? "On Hold" : getDateTimeString() + " / " + getDeliverByDateTimeString()) : "Ready Now / Deliver ASAP" + (countryCode == "NZ" ? "" : " (" + booking.pickupTimeZone.code + ")")}}</div>
+                            <div style="padding-right:6px"><i class="fas fa-angle-down"></i></div>
+                        </div>
+                    </div>
+
+                    <div class="sendto-grouping">
+                        <h5 class="bolder desktop-zero-margin">TRACKING</h5>
+                        <label class="desktop-zero-margin">Tracking Method:</label>
+                        <div class="single-address">
+                            <div class="desktop-payload">
+                                <div class="address-component">
+                                    <select class="desktop-input" ng-model="booking.proofOfDelivery" ng-options="proofOfDelivery.value as proofOfDelivery.name for proofOfDelivery in proofOfDeliveries">
+                                        <option value="" selected>Web Site</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div ng-if="podShow('email')">
+                            <label class="desktop-zero-margin">Tracking Email: {{podShow('email') ? "*" : ""}}</label>
+                            <div class="single-address">
+                                <div class="desktop-payload" id="trackingEmailBorder">
+                                    <div class="address-component">
+                                        <input class="desktop-input" id="trackingEmail" maxlength="100" ng-model="booking.podEmail" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div ng-if="podShow('mobile')">
+                            <label class="desktop-zero-margin">Tracking Mobile: {{podShow('mobile') ? "*" : ""}}</label>
+                            <div class="single-address">
+                                <div class="desktop-payload" id="trackingMobileBorder">
+                                    <div class="address-component">
+                                        <input class="desktop-input" id="trackingMobile" maxlength="100" ng-model="booking.podMobile" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <label class="desktop-zero-margin">Leave my Parcel:</label>
+                        <div class="single-address">
+                            <div class="desktop-payload">
+                                <div class="address-component">
+                                    <select class="desktop-input" ng-model="booking.sigNotRequired" ng-options="signatureNotRequired.value as signatureNotRequired.value for signatureNotRequired in signatureNotRequireds">
+                                        <option value="" selected>Currently Signature Required</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="desktop-group">
+                    <div class="sendto-grouping">
+                        <h5 class="bolder desktop-zero-margin">REFERENCES</h5>
+
+                        <label class="desktop-zero-margin underline" ng-click="openReferenceModal('A')">Client Ref A{{booking.client.referenceAMessage != null ? " - " + booking.client.referenceAMessage : ""}}: {{booking.client.referenceAMandatory ? "*" : ""}}</label>
+                        <div class="single-address" ng-if="booking.client.referenceADefineList">
+                            <div class="desktop-payload" id="clientRefASelectBorder">
+                                <div class="address-component">
+                                    <select class="desktop-input" ng-model="booking.clientRefA" id="clientRefASelect" ng-options="referenceA.name as referenceA.name for referenceA in referencesA" ng-blur="countryCode == 'NZ' && checkIfRatesReady()">
+                                        <option value="" disabled selected hidden>Select an option...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="single-address" ng-if="!booking.client.referenceADefineList">
+                            <div class="desktop-payload" id="clientRefAInputBorder">
+                                <div class="address-component" style="width:100%;position:relative;">
+                                    <input type="text" class="desktop-input" maxlength="20" ng-model="booking.clientRefA" ng-focus="booking.clientRefAFocused = true" id="clientRefAInput" 
+                                           ng-blur="booking.clientRefAFocused = false; countryCode == 'NZ' && checkIfRatesReady()" ng-change="getReferenceSuggestions(booking.clientRefA, 'A')" />
+                                    <ul ng-if="referencesASuggestions && booking.clientRefA" class="kerran-datalist" ng-style="{visibility: booking.clientRefAFocused ? 'visible' : 'hidden'}" tabindex="0">
+                                        <li ng-repeat="reference in referencesASuggestions" ng-click="setReferenceDetails(reference, 'A')" class="kerran-datalist-option" tabindex="-1">
+                                            <i class="fas fa-asterisk" style="padding-right:5px"></i>{{reference.name}}
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <label class="desktop-zero-margin underline" ng-click="openReferenceModal('B')">Client Ref B{{booking.client.referenceBMessage != null ? " - " + booking.client.referenceBMessage : ""}}: {{booking.client.referenceBMandatory ? "*" : ""}}</label>
+                        <div class="single-address" ng-if="booking.client.referenceBDefineList">
+                            <div class="desktop-payload" id="clientRefBSelectBorder">
+                                <div class="address-component">
+                                    <select class="desktop-input" ng-model="booking.clientRefB" id="clientRefBSelect" ng-options="referenceB.name as referenceB.name for referenceB in referencesB">
+                                        <option value="" disabled selected hidden>Select an option...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="single-address" ng-if="!booking.client.referenceBDefineList">
+                            <div class="desktop-payload" id="clientRefBInputBorder">
+                                <div class="address-component" style="width:100%;position:relative;">
+                                    <input type="text" class="desktop-input" maxlength="15" ng-model="booking.clientRefB" ng-focus="booking.clientRefBFocused = true" id="clientRefBInput" ng-blur="booking.clientRefBFocused = false" ng-change="getReferenceSuggestions(booking.clientRefB, 'B')" />
+                                    <ul ng-if="referencesBSuggestions && booking.clientRefB" class="kerran-datalist" ng-style="{visibility: booking.clientRefBFocused ? 'visible' : 'hidden'}" tabindex="0">
+                                        <li ng-repeat="reference in referencesBSuggestions" ng-click="setReferenceDetails(reference, 'B')" class="kerran-datalist-option" tabindex="-1">
+                                            <i class="fas fa-asterisk" style="padding-right:5px"></i>{{reference.name}}
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <label class="desktop-zero-margin">Client Notes:</label>
+                        <div class="single-address">
+                            <div class="desktop-payload">
+                                <div class="address-component">
+                                    <textarea rows="2" class="desktop-input" maxlength="4000" ng-model="booking.clientNotes"  placeholder="This field is for your reference only. Notes entered here are not used for dispatch and are not seen by couriers."/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="speeds">
+                        <h5 class="bolder desktop-zero-margin" style="padding-left:16px;">SERVICE</h5>
+
+                        <div class="desktop-speed-panel" style="text-align:center;" ng-if="!ratesLoading && !rates && !noRates">
+                            <div class="sendto-grouping" style="border: 2px solid #3EAFC2; margin-left: 16px; margin-right: 16px;">
+                                <label>Enter the following to see what services are available:</label>
+                                <label ng-if="!booking.fromDetails || !booking.fromSearch">From Address</label>
+                                <label ng-if="!booking.toDetails || !booking.toSearch">To Address</label>
+                                <label ng-if="(!booking.stockSize || !booking.quantity) && !checkManualQuantity()">Package Size</label>
+                                <label ng-if="!booking.vehicle">Vehicle Size</label>
+                            </div>
+                        </div>
+
+                        <div class="desktop-speed-panel" ng-if="ratesLoading">
+                            <div class="loading-panel">
+                                <div style="height:165px;"></div>
+
+                                <div class="icon">
+                                    <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="desktop-speed-panel" ng-if="!rates && !ratesLoading && noRates">
+                            <div class="speed-contents">
+                                <div style="height:150px"></div>
+                                <div class="speed-button">
+                                    <div class="speed-payload">
+                                        <div class="speed-info">
+                                            <div class="speed-name">
+                                                No services available
+                                            </div>
+                                            <div class="speed-price">
+                                                {{currencyCode}}$0.00
+                                            </div>
+                                        </div>
+                                        <div class="speed-description">
+                                            There are no services available for your current to/from address and package size. Please try again or contact Urgent.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="desktop-speed-panel" ng-if="rates && rates.length > 0 && !ratesLoading">
+                            <div class="speed-contents">
+                                <div class="speed-button" ng-class="{'selected-border': rate.selected}" ng-click="setRateSelected(rate)" ng-repeat="rate in rates | object2Array | orderBy:['bookDate', 'duration', 'amount'] | filter:{ hidden: '!' }">
+                                    <div class="speed-icon">
+                                        <img ng-src="/Assets/images/{{getSpeedImage(rate)}}.png" />
+                                    </div>
+                                    <div class="speed-payload">
+                                        <div class="speed-info">
+                                            <div class="speed-name">
+                                                {{rate.serviceName}} {{booking.van && !booking.truck ? 'Van' : booking.bike && !booking.truck && validBike && bikeSpeedIds.includes(rate.speedId) ? 'Bike' : ''}}
+                                            </div>
+                                            <div class="speed-price">
+                                                {{currencyCode}}${{(rate.amount + (rate.selected ? getSelectedAccessorialChargesTotal() : 0)).toFixed(2)}}
+                                            </div>
+                                        </div>
+                                        <div class="speed-description-availability">
+                                            <div class="desktop-speed-description">
+                                                {{rate.description}} {{rate.availabilityColour && rate.availabilityColour != '#00FF00' && (currDate.getTime() === booking.deliveryDate.getTime()) ? '- may take up to ' + fastestGreenSpeed.duration + ' minutes' : ''}}
+                                            </div>
+                                            <div class="availablity" ng-style="{'background-color': rate.availabilityColour ? (!(currDate.getTime() === booking.deliveryDate.getTime()) ? '#00FF00' : rate.availabilityColour) : '#00FF00'}"></div>
+                                        </div>
+                                        <div class="speed-description-availability" ng-if="speedDescription && rate.selected && checkIfSpeedIdAllowed(trimmedSpeedId) && !speedDescriptionLoading">
+                                            <div style="font-size:12px;width:100%;">
+                                                <div style="font-weight:bold">Description:</div>
+                                                <table style="width:100%">
+                                                    <tbody>
+                                                        <tr ng-repeat="description in speedDescription.descriptions">
+                                                            <td>{{description[0]}}</td>
+                                                            <td></td>
+                                                            <td style="text-align:right;"> ${{fixedDecimal(description[1])}}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                                <table style="width:100%">
+                                                    <tbody>
+                                                        <tr>
+                                                            <td><b>Total</b></td>
+                                                            <td ng-if="countryCode == 'NZ'">(Excl GST)</td>
+                                                            <td style="text-align:right; border-top:3px double black;">${{(speedDescription.rate + getSelectedAccessorialChargesTotal()).toFixed(2)}}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="desktop-group">
+                    <div class="desktop-here-map" id="mapContainer"></div>
+                </div>
+            </div>
+
+            <div class="alert alert-danger error" role="alert" style="margin-bottom:0px; text-align:center; padding: 7px 7px;" ng-show="booking.errors.length > 0">
+                <div ng-repeat="error in booking.errors track by $index">{{error}}</div>
+            </div>
+
+            <div style="display:flex;flex-direction:row;">
+                <button class="additional-charge-button" ng-if="accessorialCharges && accessorialCharges.length > 0" ng-click="checkData(1)">
+                    Accessorial Charges ({{getSelectedAccessorialCharges().length}})
+                </button>
+                <button class="desktop-confirm-button" ng-class="{'half-size-confirm': accessorialCharges && accessorialCharges.length > 0}" ng-click="checkData(0)">
+                    Book Job
+                    <span ng-if="getSelectedAccessorialChargesTotal() > 0">
+                        (${{(booking.selectedRate.amount + getSelectedAccessorialChargesTotal()).toFixed(2)}})
+                    </span>
+                </button>
+            </div>
+        </div>
+
+        <!--Loading screen for job booking-->
+
+        <div class="desktop-panel" ng-if="(jobLoading || savedBookingSaveInProgress) && (step == 'address' || step == 'bookingConfirmation')">
+            <div></div>
+            <div class="loading-panel">
+                <div class="icon">
+                    <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+                </div>
+            </div>
+            <div></div>
+        </div>
+
+        <!--Loading screen for job booking-->
+
+        <div class="desktop-panel" ng-if="jobLoading && (step == 'bookingConfirmation' || step == 'jobBooked')">
+            <div class="loading-panel">
+                <div style="height:300px;"></div>
+
+                <div class="icon">
+                    <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+                </div>
+            </div>
+        </div>
+
+        <!--Job booked confirmation panel-->
+
+        <div class="desktop-panel" ng-if="!jobLoading && step == 'jobBooked'">
+            <div class="back-bar">
+                <div class="back-button-disabled"></div>
+            </div>
+
+            <div style="display:flex;flex-direction:row;height:100%;align-items:center;">
+                <div class="desktop-group" style="width:50%">
+                    <div class="booking-title">
+                        <div class="booking-title-text">Confirmation Details</div>
+                    </div>
+
+                    <div class="extra-grouping scrollable">
+                        <div class="confirmation-info">
+                            <div class="flex-row">
+                                <div class="half-width confirmation-border">
+                                    <div class="confirmation-title">From Address:</div>
+                                    <div class="confirmation-data">{{getConfirmationAddress("from")}}</div>
+                                </div>
+                                <div class="half-width confirmation-border">
+                                    <div class="confirmation-title">To Address:</div>
+                                    <div class="confirmation-data">{{getConfirmationAddress("to")}}</div>
+                                </div>
+                            </div>
+                            <div class="flex-row" ng-if="booking.pickupNotes || booking.deliveryNotes">
+                                <div class="half-width confirmation-border">
+                                    <div class="confirmation-title">Pickup Notes:</div>
+                                    <div class="confirmation-data" ng-if="booking.pickupNotes">{{booking.pickupNotes}}</div>
+                                </div>
+
+                                <div class="half-width confirmation-border">
+                                    <div class="confirmation-title">Delivery Notes:</div>
+                                    <div class="confirmation-data" ng-if="booking.deliveryNotes">{{booking.deliveryNotes}}</div>
+                                </div>
+                            </div>
+                            <div class="flex-row confirmation-border">
+                                <div class="half-width" ng-if="!booking.holdJob">
+                                    <div class="confirmation-title">Ready Date:</div>
+                                    <div class="confirmation-data">{{booking.deliveryDate.toLocaleDateString(countryCode == 'NZ' ? "en-NZ" : "en-US")}}</div>
+                                </div>
+                                <div class="half-width" ng-if="!booking.holdJob">
+                                    <div class="confirmation-title">Ready Time:</div>
+                                    <div class="confirmation-data">{{booking.deliveryTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false})}} {{booking.pickupTimeZone.code}}</div>
+                                </div>
+                                <div ng-if="booking.holdJob">
+                                    <div class="confirmation-title">Ready Date/Time:</div>
+                                    <div class="confirmation-data"><b style="color:darkorange;">On Hold: This job will not go ahead unless it is marked as ready in the Job List screen.</b></div>
+                                </div>
+                            </div>
+                            <div class="flex-row confirmation-border" ng-if="booking.deliverBy">
+                                <div class="half-width">
+                                    <div class="confirmation-title">Deliver By Date:</div>
+                                    <div class="confirmation-data">{{booking.deliverByDate.toLocaleDateString(countryCode == 'NZ' ? "en-NZ" : "en-US")}}</div>
+                                </div>
+                                <div class="half-width">
+                                    <div class="confirmation-title">Deliver By Time:</div>
+                                    <div class="confirmation-data">{{booking.deliverByTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false})}} {{booking.deliverByTimeZone.code}}</div>
+                                </div>
+                            </div>
+                            <div class="flex-row confirmation-border">
+                                <div class="half-width">
+                                    <div class="confirmation-title">Quantity / Total Weight:</div>
+                                    <div class="confirmation-data">{{getTotalQuantity()}} / {{getTotalWeightSummary()}}{{weightUnit}}{{getTotalWeightSummary() > 1 ? 's' : ''}}</div>
+                                </div>
+                                <div class="half-width">
+                                    <div class="confirmation-title">Dangerous Goods:</div>
+                                    <div class="confirmation-data">{{booking.dangerousGoods == true ? "Yes - Class " + booking.dangerousGoodsClass : "No"}}</div>
+                                </div>
+                            </div>
+                            <div class="flex-row confirmation-border">
+                                <div class="half-width">
+                                    <div class="confirmation-title">Service:</div>
+                                    <div class="confirmation-data">{{booking.selectedRate.serviceName}} {{booking.van && !booking.truck ? 'Van' : booking.bike && !booking.truck && validBike && bikeSpeedIds.includes(rate.speedId) ? 'Bike' : ''}}</div>
+                                </div>
+                                <div class="half-width">
+                                    <div class="confirmation-title">Price:</div>
+                                    <div class="confirmation-data">
+                                        ${{(booking.selectedRate.amount + getSelectedAccessorialChargesTotal()).toFixed(2)}} {{countryCode == "NZ" ? "(Exc GST)" : ""}}
+                                        {{countryCode == "NZ" ? ("$" + ((booking.selectedRate.amount + getSelectedAccessorialChargesTotal()) * 1.15).toFixed(2) + " (Incl GST)") : ""}}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex-row confirmation-border" ng-if="booking.selectedRate.speedId === 7 || booking.selectedRate.speedId === 6">
+                                <div>
+                                    <div class="confirmation-title">Please Note:</div>
+                                    <div class="confirmation-data">This price is an estimate and may change. If you would like to have a confirmed price, please contact us on live chat for a quote.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div></div>
+                </div>
+                <div class="desktop-group" style="width:50%">
+                    <div>
+                        <div class="booking-title">
+                            <div class="booking-title-text">Job Data</div>
+                        </div>
+                    </div>
+
+                    <div class="extra-grouping">
+                        <div class="input-group">
+                            <div>
+                                <div style="text-align:center;font-weight:bold;">Please print your label{{getTotalQuantity() === 1 ? '' : 's'}} and attach it to your package{{getTotalQuantity() === 1 ? '' : 's'}}!</div>
+                            </div>
+
+                            <div style="height:16px"></div>
+
+                            <label>Job Number:</label>
+                            <div class="single-address">
+                                <div class="desktop-payload">
+                                    <div class="address-component">
+                                        <input type="text" class="data-input" ng-model="jobData.jobNumber" disabled />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="height:16px"></div>
+
+                            <label>Tracking Link:</label>
+                            <div class="single-address">
+                                <div class="desktop-payload">
+                                    <div class="address-component center-a">
+                                        <a href="" ng-click="openNewTab(jobData.trackingUrl)">View your tracking here</a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="height:16px"></div>
+
+                            <label>Print Label:</label>
+                            <div class="single-address">
+                                <div class="desktop-payload">
+                                    <div class="address-component center-a">
+                                        <a href="" ng-click="openLabelModal()">Print your Label</a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div ng-if="booking.savedBookingSet">
+                                <div style="height:16px"></div>
+
+                                <label>Update Saved Booking:</label>
+                                <div class="single-address">
+                                    <div class="desktop-payload">
+                                        <div class="address-component center-a">
+                                            <a href="" ng-click="updateOrCreateSavedBooking()">Update {{booking.savedBooking.name}}</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div ng-if="!booking.savedBookingSet">
+                                <div style="height:16px"></div>
+
+                                <label>New Saved Booking (optional):</label>
+                                <div class="address-icon">
+                                    <div class="single-address" style="width:83.33%">
+                                        <div class="desktop-payload">
+                                            <div class="address-component">
+                                                <input type="text" class="data-input" maxlength="100" placeholder="Enter a name for this booking..." ng-model="booking.newSavedBookingName" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="plus-button-border">
+                                        <i class="fas fa-plus-circle add-row-icon-bigger" title="Create the named Saved Booking with the values from your current booking" ng-click="checkCreateSavedBooking()"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div ng-if="booking.client.stripeClient">
+                                <div style="height:16px"></div>
+
+                                <label>Credit Card Charge:</label>
+                                <div>Your credit card linked with stripe will be charged <b>${{(countryCode == "NZ" ? booking.selectedRate.amount * 1.15 : booking.selectedRate.amount).toFixed(2)}} {{countryCode == "NZ" ? "(Incl GST)" : ""}}</b>. This amount is subject to change.</div>
+                            </div>
+
+                            <div ng-if="!returnJob && isP2PSpeedGrouping()">
+                                <div style="height:16px"></div>
+
+                                <button style="width:100%;border:1px solid black" ng-click="createReturnBooking()">
+                                    ↩️ Create Return Booking
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div></div>
+                </div>
+            </div>
+
+            <button class="confirm-button" ng-disabled="false" ng-class="{'disabled-Button': false}" ng-click="clearAll()">Book Another?</button>
+        </div>
+    </div>
+
+    <!--DG Select Modal-->
+
+    <div class="dg-modal modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" style="top:17.5%" role="document">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Confirm DG</h5></div>
+                <div class="modal-body">
+                    Please confirm if you have DG docs and which DG class the delivery is. Dry Ice is class 9 and requires weight.
+
+                    <div style="height:16px;"></div>
+
+                    <div class="extra-grouping">
+                        <div class="input-group">
+                            <div class="flex-between">
+                                <label>Dangerous Goods:</label>
+                                <input type="checkbox" ng-model="booking.dangerousGoods" />
+                            </div>
+
+                            <div style="height:16px"></div>
+
+                            <div class="flex-between">
+                                <label>Dangerous Goods Docs:</label>
+                                <input type="checkbox" id="dgDocs" ng-model="booking.dangerousGoodsDocs" />
+                            </div>
+
+                            <div style="height:16px"></div>
+
+                            <label>Dangerous Goods Class:</label>
+                            <div class="single-address">
+                                <div class="desktop-payload" id="dgClassBorder">
+                                    <div class="address-component">
+                                        <select class="data-input" id="dgClass" ng-model="booking.dangerousGoodsClass" ng-options="dangerousGoodsClass.value as dangerousGoodsClass.name for dangerousGoodsClass in dangerousGoodsClasses">
+                                            <option value="" disabled selected hidden>Select a class...</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div ng-if="booking.dangerousGoodsClass === 9">
+                                <div style="height:16px"></div>
+
+                                <label>Dry Ice Weight:</label>
+                                <div class="single-address" style="display: flex; gap: 8px; align-items: center;">
+                                    <div class="desktop-payload" style="flex: 1;">
+                                        <div class="address-component">
+                                            <input type="number" class="data-input" ng-model="booking.dryIceWeight" />
+                                        </div>
+                                    </div>
+                                    <div class="desktop-payload" style="width: 100px;">
+                                        <div class="address-component">
+                                            <select class="data-input" ng-model="booking.dryIceWeightUnit" ng-change="convertDryIceWeight()">
+                                                <option value="LBS">LBS</option>
+                                                <option value="KG">KG</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="prompt-footer">
+                    <div class="alert alert-danger error" role="alert" style="margin-bottom:0px" ng-show="dangerousGoods.errors.length > 0">
+                        <div ng-repeat="error in dangerousGoods.errors track by $index">{{error}}</div>
+                    </div>
+
+                    <button class="prompt-button prompt-button-confirm fas fa-edit" ng-disabled="checkDGValidity()" ng-class="{'disabled-Button': checkDGValidity()}" ng-click="checkDGData()"><span class="prompt-button-text">CONFIRM</span></button>
+                    <button class="prompt-button prompt-button-cancel fas fa-eraser" data-dismiss="modal" ng-click="clearDG()"><span class="prompt-button-text">CLEAR</span></button>
+                    <button class="prompt-button prompt-button-cancel fas fa-times" data-dismiss="modal" ng-click="dgBack()"><span class="prompt-button-text">CLOSE</span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--Truck Select Modal-->
+
+    <div class="truck-modal modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" style="top:25%" role="document">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Confirm Truck Details</h5></div>
+                <div class="modal-body">
+                    Please confirm whether your delivery will require taillift at pickup and/or delivery and if it is to a residental or business address.
+
+                    <div style="height:16px;"></div>
+
+                    <div class="extra-grouping">
+                        <div class="flex-between">
+                            <label>Truck:</label>
+                            <input type="checkbox" ng-model="booking.truck" ng-change="booking.truck = true" />
+                        </div>
+
+                        <div style="height:16px"></div>
+
+                        <div class="flex-between">
+                            <label>TailLift (Pickup):</label>
+                            <input type="checkbox" ng-model="booking.tailLiftPickup" />
+                        </div>
+
+                        <div style="height:16px"></div>
+
+                        <div class="flex-between">
+                            <label>TailLift (Dropoff):</label>
+                            <input type="checkbox" ng-model="booking.tailLiftDropoff" />
+                        </div>
+
+                        <div style="height:16px"></div>
+
+                        <div class="flex-between">
+                            <label style="padding-right:20px">Deliver To:</label>
+                            <div id="deliverTo">
+                                <input type="radio" name="deliverTo" id="business" value="Business" ng-model="booking.deliverTo" />
+                                <label for="business" class="radio-label">Business</label>
+                                <input type="radio" name="deliverTo" id="residential" value="Residential" ng-model="booking.deliverTo" />
+                                <label for="residential" class="radio-label">Residential</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="prompt-footer">
+                    <div class="alert alert-danger error" role="alert" style="margin-bottom:0px" ng-show="truck.errors.length > 0">
+                        <div ng-repeat="error in truck.errors track by $index">{{error}}</div>
+                    </div>
+
+                    <button class="prompt-button prompt-button-confirm fas fa-edit" ng-disabled="checkTruckValidity()" ng-class="{'disabled-Button': checkTruckValidity()}" ng-click="checkTruckData()"><span class="prompt-button-text">CONFIRM</span></button>
+                    <button class="prompt-button prompt-button-cancel fas fa-eraser" data-dismiss="modal" ng-click="clearTruck()"><span class="prompt-button-text">CLEAR</span></button>
+                    <button class="prompt-button prompt-button-cancel fas fa-times" data-dismiss="modal" ng-click="truckBack()"><span class="prompt-button-text">CLOSE</span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--Time Select Modal-->
+
+    <div class="time-modal modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" style="top:0%" role="document">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Select Prebook Time</h5></div>
+
+                <div style="height:16px;"></div>
+
+                <div class="double-button">
+                    <button class="single-button-focus" ng-class="{'selected-button': !booking.recurring}" ng-click="booking.recurring = false">Normal</button>
+                    <button class="single-button-focus" ng-class="{'selected-button': booking.recurring}" ng-click="booking.recurring = true">Recurring</button>
+                </div>
+
+                <div class="modal-body">
+                    Please select the date and time that your delivery will be ready for collection.
+
+                    <div style="height:16px;"></div>
+
+                    <div class="extra-grouping">
+                        <div class="input-group">
+                            <label>Ready Date:</label>
+                            <div class="single-address">
+                                <div class="desktop-payload" id="readyDateBorder">
+                                    <div class="address-component">
+                                        <input type="date" min="{{minDate}}" max="{{maxDate}}" id="readyDate" class="data-input" ng-disabled="booking.holdJob" ng-model="booking.deliveryDate" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="height:16px"></div>
+
+                            <div ng-if="countryCode != 'NZ'">
+                                <label>Ready Time:</label>
+                                <div style="display:flex;flex-direction:row;">
+                                    <div style="width:75%" class="single-address">
+                                        <div class="desktop-payload" id="readyTimeBorder">
+                                            <div class="address-component">
+                                                <div uib-timepicker id="readyTime" ng-model="booking.deliveryTime" ng-disabled="booking.holdJob" hour-step="1" minute-step="1"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style="width:25%" class="single-address">
+                                        <div class="desktop-payload">
+                                            <div class="address-component">
+                                                <select class="data-input" style="height:46px" ng-options="timeZone as timeZone.code for timeZone in timeZones" ng-model="booking.pickupTimeZone"></select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div ng-if="countryCode == 'NZ'">
+                                <div ng-if="!economyRun">
+                                    <label>Ready Time:</label>
+                                    <div class="single-address">
+                                        <div class="desktop-payload" id="readyTimeBorder">
+                                            <div class="address-component">
+                                                <input type="time" class="data-input" id="readyTime" ng-disabled="booking.holdJob" ng-model="booking.deliveryTime" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div ng-if="economyRun">
+                                    <label>Ready Time:</label>
+                                    <div class="single-address">
+                                        <div class="desktop-payload" id="economyReadyTimeBorder">
+                                            <div class="address-component">
+                                                <select class="data-input" id="economyReadyTime" ng-disabled="booking.holdJob" ng-options="economyRun.value as economyRun.name for economyRun in economyRuns" ng-model="booking.deliveryTime"></select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="height:16px;"></div>
+
+                            <div ng-if="!booking.recurring">
+                                <label>Set Deliver By:</label>
+                                <input type="checkbox" class="data-input" ng-model="booking.deliverBy" />
+
+                                <div style="height:16px;"></div>
+
+                                <div ng-if="booking.deliverBy">
+                                    <label>Deliver By Date:</label>
+                                    <div class="single-address">
+                                        <div class="desktop-payload" id="deliverByDateBorder">
+                                            <div class="address-component">
+                                                <input type="date" min="{{minDate}}" max="{{maxDate}}" id="deliverByDate" class="data-input" ng-disabled="booking.holdJob" ng-model="booking.deliverByDate" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style="height:16px"></div>
+
+                                    <div ng-if="countryCode != 'NZ'">
+                                        <label>Deliver By Time:</label>
+                                        <div style="display:flex;flex-direction:row;">
+                                            <div style="width:75%" class="single-address">
+                                                <div class="desktop-payload" id="deliverByTimeBorder">
+                                                    <div class="address-component">
+                                                        <div uib-timepicker id="deliverByTime" ng-model="booking.deliverByTime" ng-disabled="booking.holdJob" hour-step="1" minute-step="1"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div style="width:25%" class="single-address">
+                                                <div class="desktop-payload">
+                                                    <div class="address-component">
+                                                        <select class="data-input" style="height:46px" ng-options="timeZone as timeZone.code for timeZone in timeZones" ng-model="booking.deliverByTimeZone"></select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div ng-if="countryCode == 'NZ'">
+                                        <label>Deliver By Time:</label>
+                                        <div class="single-address">
+                                            <div class="desktop-payload" id="deliverByTimeBorder">
+                                                <div class="address-component">
+                                                    <input type="time" class="data-input" id="deliverByTime" ng-disabled="booking.holdJob" ng-model="booking.deliverByTime" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style="height:16px;"></div>
+                                </div>
+
+                                <div ng-if="countryCode != 'NZ'">
+                                    <label>Your Current Time Zone:</label>
+                                    <div class="single-address">
+                                        <div class="desktop-payload">
+                                            <div class="address-component">
+                                                <input class="data-input" ng-disabled="true" ng-value="timeZone.comboName" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style="height:16px;"></div>
+                                </div>
+
+                                <label>On Hold:</label>
+                                <input type="checkbox" class="data-input" ng-click="setCurrentTime()" ng-model="booking.holdJob" />
+
+                                <div style="height:16px;" ng-if="booking.holdJob"></div>
+
+                                <label style="color:darkorange;" ng-if="booking.holdJob">Job will not go ahead until made ready in job list.</label>
+                            </div>
+
+                            <div ng-if="booking.recurring">
+                                <label>Recurring Job Name:</label>
+                                <div class="single-address">
+                                    <div class="desktop-payload">
+                                        <div class="address-component">
+                                            <input class="data-input" ng-model="booking.recurringName" placeholder="Optional, can help to find this job..." />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <label>Recurrance Days:</label>
+                                <div class="single-address">
+                                    <div class="desktop-payload" id="recurringDaysBorder">
+                                        <div class="address-component">
+                                            <ui-select multiple
+                                                       class="data-input"
+                                                       ng-model="booking.recurringDays"
+                                                       theme="bootstrap"
+                                                       id="recurringDay"
+                                                       ng-change="updateQuery()">
+                                                <ui-select-match placeholder="Select values...">
+                                                    {{$item.value}}
+                                                </ui-select-match>
+                                                <ui-select-choices repeat="day in days | filter: $select.search">
+                                                    <div ng-bind-html="day.value | highlight: $select.search"></div>
+                                                </ui-select-choices>
+                                            </ui-select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style="height:16px;"></div>
+
+                                <label>Recurrance Frequency:</label>
+                                <div class="single-address">
+                                    <div class="desktop-payload" id="recurringFrequencyBorder">
+                                        <div class="address-component">
+                                            <select class="data-input" ng-model="booking.recurringFrequency" id="recurringFrequency" ng-change="updateRecurringInitialDays()"  ng-options="frequency.value as frequency.value for frequency in frequencies">
+                                                <option value="" disabled selected hidden>Select an option...</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div ng-if="booking.recurringFrequency === 'Weekly' || booking.recurringFrequency === 'Fortnightly'">
+                                    <div style="height:16px;"></div>
+
+                                    <label>Initial Days Window (Auto-generate bookings for next x days in the future):</label>
+                                    <div class="single-address">
+                                        <div class="desktop-payload" id="recurringInitialDaysBorder">
+                                            <div class="address-component">
+                                                <input type="number" class="data-input" id="recurringInitialDays" min="1" max="60" ng-model="booking.recurringInitialDays" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style="height:16px;"></div>
+
+                                <label>Holiday Behaviour:</label>
+                                <div class="single-address">
+                                    <div class="desktop-payload" id="recurringHolidayBorder">
+                                        <div class="address-component">
+                                            <select class="data-input" ng-model="booking.recurringHolidays" id="recurringHoliday">
+                                                <option value="" selected>Don't book</option>
+                                                <option value="1">Deliver Next Day</option>
+                                                <option value="2">Book Anyway</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div ng-if="countryCode == 'NZ'">
+                                    <div style="height:16px;"></div>
+
+                                    <label style="color:red">Recurring bookings do not currently create a job for today. Please book a regular job for today as well if necessary.</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="prompt-footer">
+                    <div class="alert alert-danger error" role="alert" style="margin-bottom:0px" ng-show="time.errors.length > 0">
+                        <div ng-repeat="error in time.errors track by $index">{{error}}</div>
+                    </div>
+
+                    <button class="prompt-button prompt-button-confirm fas fa-edit" ng-click="checkTimeData()"><span class="prompt-button-text">CONFIRM</span></button>
+                    <button class="prompt-button prompt-button-cancel fas fa-undo" data-dismiss="modal" ng-click="clearTime()"><span class="prompt-button-text">RESET</span></button>
+                    <button class="prompt-button prompt-button-cancel fas fa-times" data-dismiss="modal" ng-click="timeBack()"><span class="prompt-button-text">CLOSE</span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--Reference List Modal-->
+
+    <div class="referenceA-modal modal" id="referenceA-modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" style="top:17.5%" role="document">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Add/Edit Reference A List</h5></div>
+                <div class="modal-body">
+                    <label>Add and remove references with the plus and minus buttons, then save when done. 'Close' will revert any unsaved changes.</label>
+                    <table class="table-container" style="width:100%">
+                        <tbody>
+                            <tr>
+                                <th class="table-title">Name</th>
+                                <th class="table-title">
+                                    <i class="fas fa-plus-circle" title="Add a new row to the reference table" ng-click="addReference('A')"></i>
+                                </th>
+                            </tr>
+                            <tr dir-paginate="reference in referencesA | itemsPerPage: 10 track by $index" pagination-id="paginate1">
+                                <td class="table-content">
+                                    <input ng-model="reference.name" id="reference-A-{{$index}}" />
+                                </td>
+                                <td class="table-content">
+                                    <i class="fas fa-minus-circle" title="Remove this row from the reference table" ng-click="removeReference('A', reference.id)"></i>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div style="display:flex;justify-content:center;">
+                        <dir-pagination-controls pagination-id="paginate1" on-page-change="pageChanged(newPageNumber)"></dir-pagination-controls>
+                    </div>
+                </div>
+                <div class="prompt-footer">
+                    <i class="prompt-button prompt-button-confirm fas fa-edit" data-dismiss="modal" ng-click="saveReferenceChanges('A')"><span class="prompt-button-text">SAVE</span></i>
+                    <i class="prompt-button prompt-button-cancel fas fa-times" data-dismiss="modal" ng-click="revertReferenceChanges('A')"><span class="prompt-button-text">CLOSE</span></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="referenceB-modal modal" id="referenceB-modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" style="top:17.5%" role="document">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Add/Edit Reference B List</h5></div>
+                <div class="modal-body">
+                    <label>Add and remove references with the plus and minus buttons, then save when done. 'Close' will revert any unsaved changes.</label>
+                    <table class="table-container" style="width:100%">
+                        <tbody>
+                            <tr>
+                                <th class="table-title">Name</th>
+                                <th class="table-title">
+                                    <i class="fas fa-plus-circle" title="Add a new row to the reference table" ng-click="addReference('B')"></i>
+                                </th>
+                            </tr>
+                            <tr dir-paginate="reference in referencesB | itemsPerPage: 10 track by $index" pagination-id="paginate2">
+                                <td class="table-content">
+                                    <input ng-model="reference.name" id="reference-B-{{$index}}" />
+                                </td>
+                                <td class="table-content">
+                                    <i class="fas fa-minus-circle" title="Remove this row from the reference table" ng-click="removeReference('B', reference.id)"></i>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div style="display:flex;justify-content:center;">
+                        <dir-pagination-controls pagination-id="paginate2" on-page-change="pageChanged(newPageNumber)"></dir-pagination-controls>
+                    </div>
+                </div>
+                <div class="prompt-footer">
+                    <i class="prompt-button prompt-button-confirm fas fa-edit" data-dismiss="modal" ng-click="saveReferenceChanges('B')"><span class="prompt-button-text">SAVE</span></i>
+                    <i class="prompt-button prompt-button-cancel fas fa-times" data-dismiss="modal" ng-click="revertReferenceChanges('B')"><span class="prompt-button-text">CLOSE</span></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--Accessorial Charge Modal-->
+
+    <div class="accessorialCharge-modal modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" style="top:5%; max-width:1200px; max-height:90vh;" role="document">
+            <div class="modal-content" style="max-height:90vh; display:flex; flex-direction:column;">
+                <div class="modal-header">
+                    <h5 class="modal-title">Accessorial Charges</h5>
+                </div>
+                <div class="modal-body" style="overflow-y:auto; flex:1;">
+                    <!-- Loading State -->
+                    <div ng-if="accessorialChargesLoading" style="text-align:center; padding:40px;">
+                        <i class="fa fa-spinner fa-pulse fa-2x fa-fw"></i>
+                        <p style="margin-top:10px;">Loading charges...</p>
+                    </div>
+
+                    <!-- No Charges Available -->
+                    <div ng-if="!accessorialChargesLoading && (!accessorialCharges || accessorialCharges.length === 0)"
+                         style="text-align:center; padding:40px;">
+                        <i class="fas fa-info-circle fa-3x" style="color:#3EAFC2;"></i>
+                        <p style="margin-top:20px; font-size:16px;">No accessorial charges available for this rate.</p>
+                        <button class="prompt-button prompt-button-confirm" data-dismiss="modal" ng-click="confirmAccessorialCharges()">
+                            <i class="fas fa-check"></i>
+                            <span class="prompt-button-text">Continue to Book</span>
+                        </button>
+                    </div>
+
+                    <!-- Charges Available -->
+                    <div ng-if="!accessorialChargesLoading && accessorialCharges && accessorialCharges.length > 0">
+                        <!-- Auto-selected Alert -->
+                        <div class="alert alert-info" ng-if="hasAutoSelectedCharges()" style="margin-bottom:20px;">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Note:</strong> Some charges have been automatically added based on your job details (marked with
+                            <span class="badge badge-info" style="background-color:#17a2b8; color:white; padding:2px 6px; border-radius:3px; font-size:11px;">AUTO</span>).
+                            You can uncheck them if not needed.
+                        </div>
+
+                        <!-- Charges by Category -->
+                        <!--<div ng-repeat="accessorialCharge in accessorialCharges" style="margin-bottom:25px;">
+                            <h6 style="font-weight:bold; color:#3EAFC2; margin-bottom:12px; padding-bottom:6px; border-bottom:2px solid #3EAFC2;">
+                                <i class="fas fa-tag"></i> {{categoryName}}
+                            </h6>-->
+
+                            <!-- Charges Table -->
+                            <div style="overflow-x:auto;">
+                                <table class="table table-sm table-hover" style="margin-bottom:0;">
+                                    <thead style="background-color:#f8f9fa;">
+                                        <tr>
+                                            <th style="width:5%; text-align:center;">
+                                                <i class="fas fa-check" title="Select"></i>
+                                            </th>
+                                            <th style="width:20%;">Service</th>
+                                            <th style="width:30%;">Description</th>
+                                            <th style="width:20%;">Calculation</th>
+                                            <th style="width:12%; text-align:right;">Amount</th>
+                                            <th style="width:8%; text-align:center;">
+                                                <i class="fas fa-info-circle" title="Additional info"></i>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr ng-repeat="accessorialCharge in accessorialCharges | filter: {applicable: true} | orderBy: 'name'"
+                                            ng-class="{'table-success': accessorialCharge.autoSelected && accessorialCharge.selected, 'table-secondary': !accessorialCharge.selected}"
+                                            style="transition: background-color 0.2s;">
+                                            <td style="text-align:center; vertical-align:middle;">
+                                                <input type="checkbox"
+                                                       ng-model="accessorialCharge.selected"
+                                                       ng-change="accessorialChargeToggled(accessorialCharge)"
+                                                       ng-disabled="accessorialCharge.requiresQuote"
+                                                       style="width:18px; height:18px; cursor:pointer;">
+                                            </td>
+                                            <td style="vertical-align:middle;">
+                                                <strong>{{accessorialCharge.name}}</strong>
+                                                <span ng-if="accessorialCharge.autoSelected"
+                                                      class="badge badge-info"
+                                                      style="background-color:#17a2b8; color:white; margin-left:6px; padding:2px 6px; border-radius:3px; font-size:11px;">
+                                                    AUTO
+                                                </span>
+                                            </td>
+                                            <td style="vertical-align:middle;">
+                                                <small>{{accessorialCharge.description || 'No description'}}</small>
+                                                <div ng-if="accessorialCharge.conditionalNote" style="margin-top:4px;">
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-exclamation-triangle" style="color:#ffc107;"></i>
+                                                        {{accessorialCharge.conditionalNote}}
+                                                    </small>
+                                                </div>
+                                            </td>
+                                            <td style="vertical-align:middle;">
+                                                <!-- Flat Fee -->
+                                                <div ng-if="accessorialCharge.chargeType === 'flat'" style="display:flex; flex-direction:column; gap:4px;">
+                                                    <small>
+                                                        <strong>Flat fee</strong>
+                                                    </small>
+                                                    <small ng-if="accessorialCharge.minimumCharge" class="text-muted" style="font-style:italic;">
+                                                        (Min: ${{accessorialCharge.minimumCharge | number:2}})
+                                                    </small>
+                                                    <small ng-if="accessorialCharge.maximumCharge" class="text-muted" style="font-style:italic;">
+                                                        (Max: ${{accessorialCharge.maximumCharge | number:2}})
+                                                    </small>
+                                                </div>
+
+                                                <!-- Per Unit / Hourly -->
+                                                <div ng-if="accessorialCharge.chargeType === 'per_unit' || accessorialCharge.chargeType === 'hourly'" style="display:flex; flex-direction:column; gap:4px;">
+                                                    <div style="display:flex; align-items:center; gap:6px;">
+                                                        <input type="number"
+                                                               ng-model="accessorialCharge.inputValue"
+                                                               ng-change="recalculateCharge(accessorialCharge)"
+                                                               ng-disabled="!accessorialCharge.selected || accessorialCharge.isAutoPopulated"
+                                                               ng-readonly="accessorialCharge.isAutoPopulated"
+                                                               min="{{charge.minimumQuantity || 0}}"
+                                                               step="1"
+                                                               style="width:70px; padding:4px; border:1px solid #ced4da; border-radius:3px;"
+                                                               ng-style="{'background-color': accessorialCharge.isAutoPopulated ? '#e9ecef' : 'white',
+                                                                    'cursor': accessorialCharge.isAutoPopulated ? 'not-allowed' : 'text'}"
+                                                               class="data-input"
+                                                               title="{{accessorialCharge.isAutoPopulated ? 'Auto-calculated from job details' : 'Enter value'}}">
+                                                        <small>
+                                                            <strong>{{accessorialCharge.unitTypeName}}</strong> × ${{accessorialCharge.ratePerUnit | number:2}}
+                                                        </small>
+                                                        <i ng-if="accessorialCharge.isAutoPopulated"
+                                                           class="fas fa-lock"
+                                                           style="color:#6c757d; font-size:12px;"
+                                                           title="Auto-calculated from job details ({{accessorialCharge.unitType === 'pounds' || accessorialCharge.unitType === 'kilograms' ? 'total weight' : 'total quantity'}})"></i>
+                                                    </div>
+                                                    <small ng-if="accessorialCharge.freeAllowance" class="text-muted" style="font-style:italic;">
+                                                        (First {{accessorialCharge.freeAllowance}} {{accessorialCharge.freeAllowanceUnitTypeName}} free)
+                                                    </small>
+                                                    <small ng-if="accessorialCharge.minimumQuantity" class="text-muted" style="font-style:italic;">
+                                                        (Min: {{accessorialCharge.minimumQuantity}} {{accessorialCharge.unitTypeName}})
+                                                    </small>
+                                                    <small ng-if="accessorialCharge.minimumCharge" class="text-muted" style="font-style:italic;">
+                                                        (Min charge: ${{accessorialCharge.minimumCharge | number:2}})
+                                                    </small>
+                                                    <small ng-if="accessorialCharge.maximumCharge" class="text-muted" style="font-style:italic;">
+                                                        (Max charge: ${{accessorialCharge.maximumCharge | number:2}})
+                                                    </small>
+                                                </div>
+
+                                                <!-- Percentage -->
+                                                <div ng-if="accessorialCharge.chargeType === 'percentage'" style="display:flex; flex-direction:column; gap:4px;">
+                                                    <small>
+                                                        <strong>{{accessorialCharge.percentageRate}}%</strong> {{getPercentageDescription(accessorialCharge)}}
+                                                    </small>
+                                                    <small ng-if="getPercentageCalculationNote(accessorialCharge)" class="text-muted" style="font-style:italic;">
+                                                        ({{getPercentageCalculationNote(accessorialCharge)}})
+                                                    </small>
+                                                    <small ng-if="accessorialCharge.minimumCharge" class="text-muted" style="font-style:italic;">
+                                                        (Min charge: ${{accessorialCharge.minimumCharge | number:2}})
+                                                    </small>
+                                                    <small ng-if="accessorialCharge.maximumCharge" class="text-muted" style="font-style:italic;">
+                                                        (Max charge: ${{accessorialCharge.maximumCharge | number:2}})
+                                                    </small>
+                                                </div>
+
+                                                <!-- Quote Required -->
+                                                <small ng-if="accessorialCharge.requiresQuote" class="text-warning">
+                                                    <i class="fas fa-phone"></i> <strong>Requires quote</strong>
+                                                </small>
+                                            </td>
+                                            <td style="text-align:right; vertical-align:middle;">
+                                                <strong ng-if="!accessorialCharge.requiresQuote && accessorialCharge.selected" style="font-size:15px; color:#28a745;">
+                                                    ${{accessorialCharge.calculatedAmount | number:2}}
+                                                </strong>
+                                                <span ng-if="!accessorialCharge.requiresQuote && !accessorialCharge.selected" class="text-muted">
+                                                    ${{accessorialCharge.calculatedAmount | number:2}}
+                                                </span>
+                                                <span ng-if="accessorialCharge.requiresQuote" class="text-muted" style="font-style:italic;">
+                                                    TBD
+                                                </span>
+                                            </td>
+                                            <td style="text-align:center; vertical-align:middle;">
+                                                <i class="fas fa-question-circle"
+                                                   ng-if="accessorialCharge.description || accessorialCharge.conditionalNote"
+                                                   title="{{accessorialCharge.description}}{{accessorialCharge.conditionalNote ? '\n\n' + accessorialCharge.conditionalNote : ''}}"
+                                                   style="cursor:help; color:#6c757d; font-size:16px;"></i>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <!--</div>-->
+
+                        <!-- Price Breakdown Summary -->
+                        <div ng-if="getSelectedAccessorialChargesTotal() > 0"
+                             style="margin-top:30px; padding:20px; background-color:#f8f9fa; border-radius:8px; border:2px solid #3EAFC2;">
+                            <h6 style="font-weight:bold; margin-bottom:15px; color:#3EAFC2;">
+                                <i class="fas fa-calculator"></i> Price Breakdown
+                            </h6>
+                            <table style="width:100%; font-size:14px;">
+                                <tbody>
+                                    <tr style="border-bottom:1px solid #dee2e6;">
+                                        <td style="padding:8px 0;">Base Rate ({{booking.selectedRate.serviceName}})</td>
+                                        <td style="text-align:right; padding:8px 0;">${{booking.selectedRate.amount | number:2}}</td>
+                                    </tr>
+                                    <tr ng-repeat="charge in getSelectedAccessorialCharges()" style="border-bottom:1px solid #dee2e6;">
+                                        <td style="padding:8px 0; padding-left:15px;">
+                                            <i class="fas fa-plus" style="color:#28a745; margin-right:6px;"></i>
+                                            {{charge.name}}
+                                        </td>
+                                        <td style="text-align:right; padding:8px 0; color:#28a745;">
+                                            ${{charge.calculatedAmount | number:2}}
+                                        </td>
+                                    </tr>
+                                    <tr style="border-top:3px double #3EAFC2; font-weight:bold; font-size:16px;">
+                                        <td style="padding:12px 0;">
+                                            Subtotal {{countryCode == 'NZ' ? '(Excl GST)' : ''}}
+                                        </td>
+                                        <td style="text-align:right; padding:12px 0;">
+                                            ${{(booking.selectedRate.amount + getSelectedAccessorialChargesTotal()) | number:2}}
+                                        </td>
+                                    </tr>
+                                    <tr ng-if="countryCode == 'NZ'" style="font-weight:bold; font-size:16px; color:#3EAFC2;">
+                                        <td style="padding:8px 0;">
+                                            Total (Incl GST)
+                                        </td>
+                                        <td style="text-align:right; padding:8px 0;">
+                                            ${{((booking.selectedRate.amount + getSelectedAccessorialChargesTotal()) * 1.15) | number:2}}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- No Charges Selected Message -->
+                        <div ng-if="getSelectedAccessorialChargesTotal() === 0"
+                             style="margin-top:20px; padding:15px; background-color:#fff3cd; border-radius:6px; border-left:4px solid #ffc107;">
+                            <i class="fas fa-info-circle" style="color:#856404;"></i>
+                            <span style="color:#856404; margin-left:8px;">
+                                No accessorial charges selected. Base rate only: <strong>${{booking.selectedRate.amount | number:2}}</strong>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="prompt-footer">
+                    <i class="prompt-button prompt-button-confirm fas fa-edit" data-dismiss="modal"><span class="prompt-button-text">SAVE & CLOSE</span></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--Update/Create Saved Booking Modal-->
+
+    <div class="savedBooking-modal modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" style="top:30%" role="document">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Update/Add Saved Booking</h5></div>
+                <div class="modal-body">
+                    Please select whether you would like to update this saved booking or create a new saved booking. When creating, you must provide a name to differentiate it.
+
+                    <input type="text" class="data-input" style="margin-top:10px;" maxlength="100" placeholder="Enter a name for this booking..." ng-model="booking.newSavedBookingName" />
+
+                    <div class="flex-between" style="margin-top:8px;">
+                        <label>Save booking time? (If specific time needed):</label>
+                        <input type="checkbox" ng-model="booking.saveBookingTime" />
+                    </div>
+                </div>
+                <div class="prompt-footer">
+                    <i class="prompt-button prompt-button-confirm fas fa-edit" ng-if="!booking.newSavedBookingName" data-dismiss="modal" ng-click="checkUpdateSavedBooking()"><span class="prompt-button-text">UPDATE</span></i>
+                    <i class="prompt-button prompt-button-confirm-disabled fas fa-edit" ng-if="booking.newSavedBookingName" data-dismiss="modal"><span class="prompt-button-text-disabled">UPDATE</span></i>
+
+                    <i class="prompt-button prompt-button-confirm fas fa-plus" ng-if="booking.newSavedBookingName" data-dismiss="modal" ng-click="checkCreateSavedBooking()"><span class="prompt-button-text">CREATE</span></i>
+                    <i class="prompt-button prompt-button-confirm-disabled fas fa-plus" ng-if="!booking.newSavedBookingName" data-dismiss="modal"><span class="prompt-button-text-disabled">CREATE</span></i>
+
+                    <i class="prompt-button prompt-button-cancel fas fa-times" data-dismiss="modal"><span class="prompt-button-text">CLOSE</span></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--Create Saved Booking Modal-->
+
+    <div class="createSavedBooking-modal modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" style="top:30%" role="document">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Create New Saved Booking</h5></div>
+                <div class="modal-body">
+                    A new saved booking will be created with the job values you currently have set. You must provide a name to differentiate it.
+
+                    <input type="text" class="data-input" style="margin-top:10px;" maxlength="100" placeholder="Enter a name for this booking..." ng-model="booking.newSavedBookingName" />
+
+                    <div class="flex-between" style="margin-top:8px;">
+                        <label>Save booking time? (If specific time needed):</label>
+                        <input type="checkbox" ng-model="booking.saveBookingTime" />
+                    </div>
+                </div>
+                <div class="prompt-footer">
+                    <i class="prompt-button prompt-button-confirm fas fa-plus" ng-if="booking.newSavedBookingName" data-dismiss="modal" ng-click="checkCreateSavedBooking()"><span class="prompt-button-text">CREATE</span></i>
+                    <i class="prompt-button prompt-button-confirm-disabled fas fa-plus" ng-if="!booking.newSavedBookingName" data-dismiss="modal"><span class="prompt-button-text-disabled">CREATE</span></i>
+
+                    <i class="prompt-button prompt-button-cancel fas fa-times" data-dismiss="modal"><span class="prompt-button-text">CLOSE</span></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--Print Label Model-->
+
+    <div class="printLabel-modal modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" style="top:30%" role="document">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Print your Label</h5></div>
+                <div class="modal-body">
+                    Please select a label size and press 'PRINT'.
+
+                    <div style="margin-top:10px;">
+                        <label>Label Size:</label>
+                        <select class="data-input" ng-model="booking.labelSize" ng-options="labelSize.value as labelSize.name for labelSize in labelSizes">
+                            <option value="" selected>PDF (A4)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="prompt-footer">
+                    <i class="prompt-button prompt-button-confirm fas fa-print" data-dismiss="modal" ng-click="printLabel()"><span class="prompt-button-text">PRINT</span></i>
+
+                    <i class="prompt-button prompt-button-cancel fas fa-times" data-dismiss="modal"><span class="prompt-button-text">CLOSE</span></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
