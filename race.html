@@ -76,6 +76,16 @@ body{background:#0a0a1a;color:#e0e0e0;font-family:'Segoe UI',system-ui,-apple-sy
 /* Speedometer */
 .speedo{position:absolute;bottom:8px;right:8px;z-index:10}
 
+/* Progress bar */
+.progress-bar{position:absolute;bottom:0;left:0;right:0;height:4px;background:#111;z-index:10}
+.progress-bar .fill{height:100%;background:linear-gradient(90deg,#00e5ff,#ff6b35);transition:width 0.5s ease;width:0%}
+
+/* Step popup */
+.step-popup{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);z-index:40;pointer-events:none;opacity:0;transition:opacity 0.2s,transform 0.3s}
+.step-popup.show{opacity:1;transform:translate(-50%,-50%) scale(1.1)}
+.step-popup .text{font-size:28px;font-weight:bold;color:#00e5ff;text-shadow:0 0 20px rgba(0,229,255,0.8),0 2px 4px rgba(0,0,0,0.8);font-family:'Courier New',monospace;text-transform:uppercase;letter-spacing:3px;white-space:nowrap}
+.step-popup .combo-text{font-size:18px;color:#ff6b35;text-shadow:0 0 15px rgba(255,107,53,0.6);margin-top:4px}
+
 canvas{border:2px solid rgba(26,26,58,0.5);border-radius:8px;display:block}
 
 /* Step complete flash on left panel */
@@ -112,6 +122,13 @@ canvas{border:2px solid rgba(26,26,58,0.5);border-radius:8px;display:block}
     <canvas id="raceCanvas"></canvas>
     <canvas id="speedoCanvas" class="speedo" width="100" height="100"></canvas>
     <div class="event-feed" id="eventFeed"></div>
+
+    <div class="step-popup" id="stepPopup">
+      <div class="text" id="popupText">PERFECT!</div>
+      <div class="combo-text" id="popupCombo">COMBO x1.4</div>
+    </div>
+
+    <div class="progress-bar"><div class="fill" id="progressFill"></div></div>
 
     <div class="start-overlay" id="startOverlay">
       <h2>🏎️ BOOKING RACE</h2>
@@ -306,6 +323,18 @@ function flashLeft() {
   setTimeout(() => el.classList.remove('active'), 400);
 }
 
+let popupTimeout = null;
+function showStepPopup(label, combo) {
+  const popup = document.getElementById('stepPopup');
+  const texts = ['NICE!', 'GREAT!', 'PERFECT!', 'INCREDIBLE!', 'LEGENDARY!'];
+  const idx = Math.min(texts.length - 1, Math.floor(combo * 1.2));
+  document.getElementById('popupText').textContent = texts[idx];
+  document.getElementById('popupCombo').textContent = combo > 1 ? `COMBO x${combo.toFixed(1)}` : label.toUpperCase();
+  popup.classList.add('show');
+  if (popupTimeout) clearTimeout(popupTimeout);
+  popupTimeout = setTimeout(() => popup.classList.remove('show'), 1800);
+}
+
 function completeStep() {
   if (currentStep >= STEPS.length || !gameStarted) return;
   if (!startTime) startTime = performance.now();
@@ -326,6 +355,8 @@ function completeStep() {
   if (comboVal > 1.5) playComboUp();
   playNitro();
   flashLeft();
+  showStepPopup(step.label, comboVal);
+  document.getElementById('progressFill').style.width = `${(currentStep + 1) / STEPS.length * 100}%`;
 
   logEvent(`✅ ${step.label} (+${Math.round(100 * comboVal)} XP, x${comboVal.toFixed(1)})`);
   currentStep++;
@@ -769,6 +800,16 @@ function gameLoop(ts) {
       raceSpeed = Math.min(BASE_SPEED, raceSpeed + 0.5);
     }
     roadPos += raceSpeed * dt * 0.002;
+    
+    // Combo decay: drops slowly if no step completed in 15+ seconds
+    if (startTime && comboVal > 1 && !missionDone) {
+      const sinceStart = (performance.now() - startTime) / 1000;
+      if (frameCount % 120 === 0 && sinceStart > 15) {
+        comboVal = Math.max(1, comboVal - 0.05);
+        document.getElementById('combo').textContent = 'x' + comboVal.toFixed(1);
+        if (comboVal < 2.5) document.getElementById('combo').className = 'hud-val';
+      }
+    }
   }
 
   const baseSeg = Math.floor(roadPos / SEG_LEN) % SEGMENTS;
