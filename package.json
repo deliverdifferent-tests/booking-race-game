@@ -1,0 +1,12 @@
+{
+  "name": "booking-race-game",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Split-screen booking training game — booking UI left, OutRun-style race right",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
