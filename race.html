@@ -209,13 +209,26 @@ function playFinish() {
   });
 }
 
-// Engine rumble loop
-let engineInterval = null;
+// Continuous engine oscillator
+let engineOsc = null, engineGain = null;
 function startEngineLoop() {
-  if (engineInterval) return;
-  engineInterval = setInterval(() => {
-    if (raceSpeed > 5) playEngineSound();
-  }, 100);
+  if (engineOsc) return;
+  ensureAudio();
+  engineOsc = audioCtx.createOscillator();
+  engineGain = audioCtx.createGain();
+  engineOsc.type = 'sawtooth';
+  engineOsc.frequency.value = 60;
+  engineGain.gain.value = 0;
+  engineOsc.connect(engineGain);
+  engineGain.connect(audioCtx.destination);
+  engineOsc.start();
+}
+function updateEngine() {
+  if (!engineOsc || !audioCtx) return;
+  const freq = 50 + raceSpeed * 0.6;
+  const vol = Math.min(0.06, raceSpeed * 0.0003);
+  engineOsc.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.05);
+  engineGain.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.05);
 }
 
 // ─── MISSION DEFINITION ───
@@ -400,10 +413,138 @@ function updateHUD() {
   }
 }
 
-// ─── IFRAME DETECTION ───
+// ─── IFRAME DETECTION (Dual: Angular scope watching + DOM polling fallback) ───
+let angularHooked = false;
+
+function tryAngularHook() {
+  // Inject Angular scope watchers into the booking iframe for reliable detection
+  try {
+    const frame = document.getElementById('bookingFrame');
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    const win = frame.contentWindow;
+    if (!win.angular || angularHooked) return;
+    
+    // Wait for Angular to bootstrap
+    const ngApp = win.angular.element(doc.body || doc.querySelector('[ng-app]'));
+    if (!ngApp || !ngApp.injector) return;
+    
+    try {
+      const $rootScope = ngApp.injector().get('$rootScope');
+      
+      // Watch for address changes (fromSearch model)
+      $rootScope.$watch(function() {
+        try {
+          const fromEl = doc.getElementById('fromBookingGpsSearch');
+          if (fromEl) {
+            const scope = win.angular.element(fromEl).scope();
+            return scope && scope.booking ? scope.booking.fromSearch : null;
+          }
+        } catch(e) {}
+        return null;
+      }, function(newVal) {
+        if (newVal && newVal.length > 3) {
+          window.postMessage({ type: 'booking-step', step: 'address', value: newVal }, '*');
+        }
+      });
+      
+      // Watch for fromDetails (autocomplete selection)
+      $rootScope.$watch(function() {
+        try {
+          const fromEl = doc.getElementById('fromBookingGpsSearch');
+          if (fromEl) {
+            const scope = win.angular.element(fromEl).scope();
+            return scope && scope.booking && scope.booking.fromDetails ? 'set' : null;
+          }
+        } catch(e) {}
+        return null;
+      }, function(newVal) {
+        if (newVal === 'set') {
+          window.postMessage({ type: 'booking-step', step: 'autocomplete' }, '*');
+        }
+      });
+
+      // Watch for stockSize (parcel selection)  
+      $rootScope.$watch(function() {
+        try {
+          const el = doc.querySelector('#packageSize select') || doc.querySelector('select[ng-model="booking.stockSize"]');
+          if (el) {
+            const scope = win.angular.element(el).scope();
+            return scope && scope.booking && scope.booking.stockSize ? scope.booking.stockSize.name : null;
+          }
+        } catch(e) {}
+        return null;
+      }, function(newVal) {
+        if (newVal) {
+          window.postMessage({ type: 'booking-step', step: 'parcel', value: newVal }, '*');
+        }
+      });
+
+      // Watch for rate selection (speed)
+      $rootScope.$watch(function() {
+        try {
+          const el = doc.querySelector('.speed-button');
+          if (el) {
+            const scope = win.angular.element(el).scope();
+            return scope && scope.booking && scope.booking.selectedRate ? scope.booking.selectedRate.serviceName : null;
+          }
+        } catch(e) {}
+        return null;
+      }, function(newVal) {
+        if (newVal) {
+          window.postMessage({ type: 'booking-step', step: 'speed', value: newVal }, '*');
+        }
+      });
+
+      // Watch for step change to jobBooked
+      $rootScope.$watch(function() {
+        try {
+          const scope = ngApp.scope();
+          return scope ? scope.step : null;
+        } catch(e) {}
+        return null;
+      }, function(newVal) {
+        if (newVal === 'jobBooked') {
+          window.postMessage({ type: 'booking-step', step: 'book' }, '*');
+        }
+      });
+
+      angularHooked = true;
+      logEvent('🔗 Angular hooks connected');
+      console.log('[Race] Angular scope watchers installed successfully');
+    } catch(e) {
+      console.log('[Race] Angular injector not ready yet:', e.message);
+    }
+  } catch(e) {
+    console.log('[Race] Hook attempt failed:', e.message);
+  }
+}
+
+// Try to hook Angular every second until success
+const hookInterval = setInterval(() => {
+  if (angularHooked) { clearInterval(hookInterval); return; }
+  tryAngularHook();
+}, 1000);
+
+// Listen for postMessage from Angular hooks
+window.addEventListener('message', (e) => {
+  if (!e.data || e.data.type !== 'booking-step' || !gameStarted || missionDone) return;
+  const step = STEPS[currentStep];
+  if (!step) return;
+
+  const stepMap = { 'address': 'addressTyped', 'autocomplete': 'autocompleteSelected', 'parcel': 'parcelSelected', 'speed': 'speedSelected', 'book': 'jobBooked' };
+  
+  if (stepMap[e.data.step] === step.detect && !lastDetected[e.data.step]) {
+    lastDetected[e.data.step] = true;
+    completeStep();
+  }
+});
+
+// DOM polling fallback (in case Angular hooks fail)
 setInterval(() => {
   if (missionDone || !gameStarted) return;
   updateHUD();
+  if (angularHooked) return; // Angular hooks handle it
+  
   try {
     const frame = document.getElementById('bookingFrame');
     const doc = frame.contentDocument || frame.contentWindow.document;
@@ -413,96 +554,54 @@ setInterval(() => {
 
     switch (step.detect) {
       case 'addressTyped': {
-        // #fromBookingGpsSearch or #toBookingGpsSearch
         const fromInput = doc.getElementById('fromBookingGpsSearch');
         const toInput = doc.getElementById('toBookingGpsSearch');
         for (const inp of [fromInput, toInput]) {
           if (inp && inp.value && inp.value.length > 3 && !lastDetected.address) {
-            lastDetected.address = true;
-            completeStep();
-            return;
+            lastDetected.address = true; completeStep(); return;
           }
         }
-        // Fallback: any desktop-input text field
         const inputs = doc.querySelectorAll('input.desktop-input[type="text"]');
         for (const inp of inputs) {
           if (inp.value && inp.value.length > 5 && inp.offsetParent !== null && !lastDetected.address) {
-            lastDetected.address = true;
-            completeStep();
-            return;
+            lastDetected.address = true; completeStep(); return;
           }
         }
         break;
       }
       case 'autocompleteSelected': {
-        // After autocomplete, multiple fields get populated
         const inputs = doc.querySelectorAll('input.desktop-input[type="text"]');
         let filled = 0;
-        inputs.forEach(inp => {
-          if (inp.value && inp.value.length > 2 && inp.offsetParent !== null) filled++;
-        });
-        if (filled >= 2 && !lastDetected.autocomplete) {
-          lastDetected.autocomplete = true;
-          completeStep();
-          return;
-        }
+        inputs.forEach(inp => { if (inp.value && inp.value.length > 2 && inp.offsetParent !== null) filled++; });
+        if (filled >= 2 && !lastDetected.autocomplete) { lastDetected.autocomplete = true; completeStep(); return; }
         break;
       }
       case 'parcelSelected': {
-        // Select with stockSize options
-        const selects = doc.querySelectorAll('select.desktop-input');
+        const selects = doc.querySelectorAll('select.desktop-input, select.data-input');
         for (const sel of selects) {
           const opt = sel.options[sel.selectedIndex];
-          if (opt) {
-            const text = opt.text || '';
-            if (text.match(/satchel|box|banana|small|medium|large/i) && !lastDetected.parcel) {
-              lastDetected.parcel = true;
-              completeStep();
-              return;
-            }
-          }
-        }
-        // Also check data-input selects
-        const selects2 = doc.querySelectorAll('select.data-input');
-        for (const sel of selects2) {
-          const opt = sel.options[sel.selectedIndex];
-          if (opt) {
-            const text = opt.text || '';
-            if (text.match(/satchel|box|banana/i) && !lastDetected.parcel) {
-              lastDetected.parcel = true;
-              completeStep();
-              return;
-            }
+          if (opt && (opt.text || '').match(/satchel|box|banana|small|medium|large/i) && !lastDetected.parcel) {
+            lastDetected.parcel = true; completeStep(); return;
           }
         }
         break;
       }
       case 'speedSelected': {
-        const selected = doc.querySelectorAll('.speed-button.selected-border');
-        if (selected.length > 0 && !lastDetected.speed) {
-          lastDetected.speed = true;
-          completeStep();
-          return;
+        if (doc.querySelectorAll('.speed-button.selected-border').length > 0 && !lastDetected.speed) {
+          lastDetected.speed = true; completeStep(); return;
         }
         break;
       }
       case 'jobBooked': {
-        const bodyText = doc.body.innerText || '';
-        if ((bodyText.includes('Confirmation Details') || /TEST-\d+/.test(bodyText) || bodyText.includes('Job Number')) && !lastDetected.booked) {
-          lastDetected.booked = true;
-          completeStep();
-          return;
+        const t = doc.body.innerText || '';
+        if ((t.includes('Confirmation Details') || /TEST-\d+/.test(t) || t.includes('Job Number')) && !lastDetected.booked) {
+          lastDetected.booked = true; completeStep(); return;
         }
         break;
       }
     }
   } catch(e) { /* cross-origin */ }
 }, 400);
-
-// Also listen for postMessage
-window.addEventListener('message', (e) => {
-  if (e.data && e.data.type === 'booking-step') completeStep();
-});
 
 // ─── PSEUDO-3D RACE ENGINE v2 ───
 const canvas = document.getElementById('raceCanvas');
@@ -824,6 +923,9 @@ function gameLoop(ts) {
 
   // Speedometer
   drawSpeedo();
+
+  // Engine sound
+  updateEngine();
 
   // HUD update
   document.getElementById('speed').textContent = Math.round(raceSpeed);
