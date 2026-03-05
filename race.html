@@ -135,8 +135,10 @@ canvas{border:2px solid rgba(26,26,58,0.5);border-radius:8px;display:block}
       <div class="subtitle">Complete a booking as fast as you can.<br>Each step accelerates your car. Beat the clock!</div>
       <button onclick="startGame()">START RACE</button>
       <div class="controls">
-        <kbd>←</kbd> <kbd>→</kbd> steer &nbsp;|&nbsp; Complete booking steps to boost
+        <kbd>←</kbd> <kbd>→</kbd> steer &nbsp;|&nbsp; Complete booking steps = speed boost<br>
+        Faster completion = higher time bonus = bigger score!
       </div>
+      <div style="margin-top:16px;color:#444;font-size:10px">🔊 Sound effects enabled &nbsp;|&nbsp; <span style="cursor:pointer;color:#666;text-decoration:underline" onclick="toggleMute()">Mute</span></div>
     </div>
 
     <div class="countdown" id="countdown"></div>
@@ -166,12 +168,18 @@ canvas{border:2px solid rgba(26,26,58,0.5);border-radius:8px;display:block}
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
 
+let muted = false;
 function ensureAudio() {
   if (!audioCtx) audioCtx = new AudioCtx();
   if (audioCtx.state === 'suspended') audioCtx.resume();
 }
+function toggleMute() {
+  muted = !muted;
+  if (engineGain) engineGain.gain.setTargetAtTime(muted ? 0 : 0.03, audioCtx.currentTime, 0.05);
+}
 
 function playTone(freq, duration, type='square', vol=0.15, ramp=true) {
+  if (muted) return;
   ensureAudio();
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
