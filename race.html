@@ -131,8 +131,15 @@ canvas{border:2px solid rgba(26,26,58,0.5);border-radius:8px;display:block}
     <div class="progress-bar"><div class="fill" id="progressFill"></div></div>
 
     <div class="start-overlay" id="startOverlay">
+      <div style="color:#ff6b35;font-size:11px;letter-spacing:4px;text-transform:uppercase;margin-bottom:4px;font-family:'Courier New',monospace">DELIVER DIFFERENT</div>
       <h2>🏎️ BOOKING RACE</h2>
-      <div class="subtitle">Complete a booking as fast as you can.<br>Each step accelerates your car. Beat the clock!</div>
+      <div class="subtitle">Master the booking workflow at speed.<br>Complete each step to accelerate — the faster you book, the higher you score!</div>
+      <div style="color:#444;font-size:11px;margin-bottom:12px;line-height:1.8">
+        📋 5 Steps: Address → Autocomplete → Parcel → Speed → Book<br>
+        ⚡ Each step = speed boost + combo multiplier<br>
+        ⏱️ Time bonus rewards fast completion<br>
+        🏆 Compete on the leaderboard!
+      </div>
       <button onclick="startGame()">START RACE</button>
       <div class="controls">
         <kbd>←</kbd> <kbd>→</kbd> steer &nbsp;|&nbsp; Complete booking steps = speed boost<br>
@@ -145,6 +152,8 @@ canvas{border:2px solid rgba(26,26,58,0.5);border-radius:8px;display:block}
 
     <div class="finish-overlay" id="finishOverlay">
       <h2>🏁 RACE COMPLETE!</h2>
+      <div id="gradeDisplay" style="font-size:72px;font-weight:bold;font-family:'Courier New',monospace;text-shadow:0 0 40px currentColor;margin:4px 0">A+</div>
+      <div id="gradeLabel" style="font-size:14px;letter-spacing:3px;text-transform:uppercase;font-family:'Courier New',monospace;margin-bottom:12px">OUTSTANDING</div>
       <div class="final-xp" id="finalXP">0</div>
       <div style="color:#666;font-size:12px;margin-bottom:8px">TOTAL XP</div>
       <div class="stats">
@@ -386,16 +395,38 @@ function completeStep() {
   renderSteps();
 }
 
+function getGrade(score) {
+  if (score >= 2000) return { grade: 'S', color: '#ff00ff', label: 'LEGENDARY' };
+  if (score >= 1500) return { grade: 'A+', color: '#00e5ff', label: 'OUTSTANDING' };
+  if (score >= 1200) return { grade: 'A', color: '#00cc66', label: 'EXCELLENT' };
+  if (score >= 900) return { grade: 'B', color: '#ffcc00', label: 'GOOD' };
+  if (score >= 600) return { grade: 'C', color: '#ff6b35', label: 'AVERAGE' };
+  return { grade: 'D', color: '#ff2244', label: 'KEEP PRACTICING' };
+}
+
 function showFinish() {
   const tm = Math.max(0.5, Math.min(3, 60 / Math.max(1, elapsed)));
   const fs = Math.round(xpVal * tm);
+  const { grade, color, label } = getGrade(fs);
   document.getElementById('finalXP').textContent = xpVal;
   document.getElementById('finalTime').textContent = elapsed.toFixed(1) + 's';
   document.getElementById('timeBonus').textContent = 'x' + tm.toFixed(2);
   document.getElementById('finalOvertakes').textContent = overtakeCount;
   document.getElementById('finalCombo').textContent = 'x' + maxCombo.toFixed(1);
   document.getElementById('finalScore').textContent = fs;
+  // Add grade display
+  const gradeEl = document.getElementById('gradeDisplay');
+  if (gradeEl) { gradeEl.textContent = grade; gradeEl.style.color = color; }
+  const gradeLabelEl = document.getElementById('gradeLabel');
+  if (gradeLabelEl) { gradeLabelEl.textContent = label; gradeLabelEl.style.color = color; }
   document.getElementById('finishOverlay').classList.add('show');
+  // Save session stats
+  const stats = JSON.parse(localStorage.getItem('dd-race-stats') || '{"games":0,"bestScore":0,"bestTime":999,"totalXP":0}');
+  stats.games++;
+  stats.bestScore = Math.max(stats.bestScore, fs);
+  stats.bestTime = Math.min(stats.bestTime, elapsed);
+  stats.totalXP += xpVal;
+  localStorage.setItem('dd-race-stats', JSON.stringify(stats));
   saveScore(fs);
 }
 
