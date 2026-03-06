@@ -679,12 +679,35 @@ function drawBuilding(x,y,sc,side) {
 
 function drawPlayerCar(x,y,tilt) {
   const w=38,h=58;
-  ctx.save();ctx.translate(x+shakeX,y+shakeY);ctx.rotate(tilt*0.025);
+  ctx.save();ctx.translate(x+shakeX,y+shakeY);
+  // Steering skew + rotation for tilt feel
+  const skewAmt = steerInput * 0.12;
+  ctx.transform(1, 0, skewAmt, 1, 0, 0);
+  ctx.rotate(tilt*0.025);
   // Shadow
   ctx.fillStyle='rgba(0,0,0,0.4)';ctx.beginPath();ctx.ellipse(0,h*0.35,w,10,0,0,Math.PI*2);ctx.fill();
-  // Body
+  
+  // Headlight beams (drawn behind car, length scales with speed)
+  const beamLen = 40 + Math.min(200, raceSpeed * 0.8);
+  const beamAlpha = 0.03 + Math.min(0.12, raceSpeed * 0.0004);
+  const beamG = ctx.createLinearGradient(0, -h/2, 0, -h/2 - beamLen);
+  beamG.addColorStop(0, `rgba(255,255,200,${beamAlpha})`);
+  beamG.addColorStop(1, 'rgba(255,255,200,0)');
+  ctx.fillStyle = beamG;
+  ctx.beginPath();
+  ctx.moveTo(-w/2+3, -h/2);
+  ctx.lineTo(-w*0.6, -h/2 - beamLen);
+  ctx.lineTo(w*0.6, -h/2 - beamLen);
+  ctx.lineTo(w/2-3, -h/2);
+  ctx.fill();
+  
+  // Body — turbo mode glow
   const g=ctx.createLinearGradient(-w,0,w,0);
-  g.addColorStop(0,'#0055aa');g.addColorStop(0.3,'#0088dd');g.addColorStop(0.5,'#00bbff');g.addColorStop(0.7,'#0088dd');g.addColorStop(1,'#0055aa');
+  if (turboMode) {
+    g.addColorStop(0,'#5500aa');g.addColorStop(0.3,'#7700dd');g.addColorStop(0.5,'#9900ff');g.addColorStop(0.7,'#7700dd');g.addColorStop(1,'#5500aa');
+  } else {
+    g.addColorStop(0,'#0055aa');g.addColorStop(0.3,'#0088dd');g.addColorStop(0.5,'#00bbff');g.addColorStop(0.7,'#0088dd');g.addColorStop(1,'#0055aa');
+  }
   ctx.fillStyle=g;roundRect(-w/2,-h/2,w,h,7);
   // Roof/cabin
   ctx.fillStyle='rgba(0,20,60,0.8)';roundRect(-w*0.3,-h*0.2,w*0.6,h*0.18,3);
@@ -700,20 +723,29 @@ function drawPlayerCar(x,y,tilt) {
   ctx.fillRect(-w/2+2,h/2-7,9,5);ctx.fillRect(w/2-11,h/2-7,9,5);
   ctx.shadowBlur=0;
   // Side stripe
-  ctx.fillStyle='#ff6b35';ctx.fillRect(-w/2,0,w,2);
-  // Nitro flames
-  if(nitroTimer>0) {
-    const fh=25+Math.random()*35;
+  ctx.fillStyle=turboMode?'#ff00ff':'#ff6b35';ctx.fillRect(-w/2,0,w,2);
+  
+  // Exhaust flames — scale with speed (always some at high speed, huge during nitro)
+  const flameActive = nitroTimer > 0 || raceSpeed > 80;
+  if(flameActive) {
+    const speedFactor = Math.min(2.5, raceSpeed / 100);
+    const nitroFactor = nitroTimer > 0 ? 2.0 : 0.5;
+    const fh = (15 + Math.random() * 20) * speedFactor * nitroFactor;
     const fg=ctx.createLinearGradient(0,h/2,0,h/2+fh);
-    fg.addColorStop(0,'#00e5ff');fg.addColorStop(0.3,'#0088ff');fg.addColorStop(0.6,'#6600ff');fg.addColorStop(1,'rgba(0,100,255,0)');
+    if (turboMode) {
+      fg.addColorStop(0,'#ff00ff');fg.addColorStop(0.3,'#cc00ff');fg.addColorStop(0.6,'#6600ff');fg.addColorStop(1,'rgba(100,0,255,0)');
+    } else {
+      fg.addColorStop(0,'#00e5ff');fg.addColorStop(0.3,'#0088ff');fg.addColorStop(0.6,'#6600ff');fg.addColorStop(1,'rgba(0,100,255,0)');
+    }
     ctx.fillStyle=fg;ctx.beginPath();
-    ctx.moveTo(-12,h/2);ctx.quadraticCurveTo(-18+Math.random()*6,h/2+fh*0.5,0,h/2+fh);
-    ctx.quadraticCurveTo(18-Math.random()*6,h/2+fh*0.5,12,h/2);ctx.fill();
+    const fw = 6 + speedFactor * 4;
+    ctx.moveTo(-fw,h/2);ctx.quadraticCurveTo(-fw-4+Math.random()*4,h/2+fh*0.5,0,h/2+fh);
+    ctx.quadraticCurveTo(fw+4-Math.random()*4,h/2+fh*0.5,fw,h/2);ctx.fill();
     // Inner bright core
     const fh2=fh*0.6;
     ctx.fillStyle='rgba(200,240,255,0.4)';ctx.beginPath();
-    ctx.moveTo(-5,h/2);ctx.quadraticCurveTo(-8,h/2+fh2*0.5,0,h/2+fh2);
-    ctx.quadraticCurveTo(8,h/2+fh2*0.5,5,h/2);ctx.fill();
+    ctx.moveTo(-3,h/2);ctx.quadraticCurveTo(-5,h/2+fh2*0.5,0,h/2+fh2);
+    ctx.quadraticCurveTo(5,h/2+fh2*0.5,3,h/2);ctx.fill();
   }
   ctx.restore();
 }
@@ -785,12 +817,26 @@ function gameLoop(ts) {
   // Physics
   if (raceActive && gameStarted) {
     // Base speed + decay toward base
+    // Turbo mode detection
+    turboMode = raceSpeed > 200;
+    if (turboMode) turboFlash += 0.15;
+    
+    // Ease-out boost decay (instant spike, smooth decay)
     if (raceSpeed > BASE_SPEED) {
-      raceSpeed = Math.max(BASE_SPEED, raceSpeed - 0.12 * dt * 0.06);
+      const decayRate = 0.02 + (raceSpeed - BASE_SPEED) * 0.00008; // gentler at high speed
+      raceSpeed = Math.max(BASE_SPEED, raceSpeed - decayRate * dt);
     } else {
-      raceSpeed = Math.min(BASE_SPEED, raceSpeed + 0.5);
+      // Ease-in recovery to base speed
+      const diff = BASE_SPEED - raceSpeed;
+      raceSpeed += diff * 0.02;
     }
-    roadPos += raceSpeed * dt * 0.002;
+    
+    // Speed line intensity decay back to 1.0
+    speedLineIntensity = Math.max(1.0, speedLineIntensity - 0.02);
+    
+    // FOV zoom decay back to 1.0
+    fovZoom += (1.0 - fovZoom) * 0.08;
+    roadPos += raceSpeed * dt * 0.02;
     
     // Combo decay: drops slowly if no step completed in 15+ seconds
     if (startTime && comboVal > 1 && !missionDone) {
@@ -819,12 +865,35 @@ function gameLoop(ts) {
   for (let i = particles.length - 1; i >= 0; i--) { const p = particles[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.25; p.life--; if (p.life <= 0) particles.splice(i, 1); }
 
   // ─── RENDER ───
-  // Sky gradient
+  // Apply FOV zoom
+  ctx.save();
+  if (fovZoom !== 1.0) {
+    ctx.translate(W/2, H/2);
+    ctx.scale(fovZoom, fovZoom);
+    ctx.translate(-W/2, -H/2);
+  }
+  
+  // Speed-reactive sky gradient
   const skyG = ctx.createLinearGradient(0, 0, 0, H * 0.5);
-  skyG.addColorStop(0, '#0a0020');
-  skyG.addColorStop(0.4, '#1a0533');
-  skyG.addColorStop(0.8, '#4a1a00');
-  skyG.addColorStop(1, '#ff6b35');
+  if (raceSpeed > 250) {
+    // Full neon mode
+    skyG.addColorStop(0, '#0a002a');
+    skyG.addColorStop(0.3, '#1a0055');
+    skyG.addColorStop(0.7, '#4400aa');
+    skyG.addColorStop(1, '#ff00ff');
+  } else if (raceSpeed > 150) {
+    // Warm sunset shift
+    const t = Math.min(1, (raceSpeed - 150) / 100);
+    skyG.addColorStop(0, '#0a0020');
+    skyG.addColorStop(0.3, `rgb(${Math.round(26+40*t)},${Math.round(5-5*t)},${Math.round(51-20*t)})`);
+    skyG.addColorStop(0.7, `rgb(${Math.round(74+80*t)},${Math.round(26+20*t)},${Math.round(0+20*t)})`);
+    skyG.addColorStop(1, '#ff6b35');
+  } else {
+    skyG.addColorStop(0, '#0a0020');
+    skyG.addColorStop(0.4, '#1a0533');
+    skyG.addColorStop(0.8, '#4a1a00');
+    skyG.addColorStop(1, '#ff6b35');
+  }
   ctx.fillStyle = skyG;
   ctx.fillRect(0, 0, W, H * 0.52);
 
@@ -892,10 +961,19 @@ function gameLoop(ts) {
 
     // Grass
     drawPoly(W/2, p1.y, W, W/2, p2.y, W, alt ? '#0d2818' : '#0f3020');
-    // Rumble strip
-    drawPoly(p1.x, p1.y, p1.w * 1.12, p2.x, p2.y, p2.w * 1.12, alt ? '#ff2244' : '#ffffff');
-    // Road surface
-    const roadColor = alt ? '#2a2a3a' : '#333344';
+    // Speed-reactive rumble strips
+    const rumbleBright = raceSpeed > 100 ? Math.min(1, (raceSpeed-100)/100) : 0;
+    const rumbleAlt = alt ? `rgb(${255},${34+rumbleBright*100},${68+rumbleBright*100})` : `rgb(${255},${255},${255})`;
+    drawPoly(p1.x, p1.y, p1.w * 1.12, p2.x, p2.y, p2.w * 1.12, rumbleAlt);
+    // Road surface — neon at turbo
+    let roadColor;
+    if (raceSpeed > 250) {
+      roadColor = alt ? '#1a0044' : '#220066'; // Full neon
+    } else if (raceSpeed > 200) {
+      roadColor = alt ? '#1a1a4a' : '#2a2a5a'; // Neon tint
+    } else {
+      roadColor = alt ? '#2a2a3a' : '#333344';
+    }
     drawPoly(p1.x, p1.y, p1.w, p2.x, p2.y, p2.w, roadColor);
     // Center line
     if (alt && raceSpeed > 5) {
@@ -948,17 +1026,49 @@ function gameLoop(ts) {
   });
   ctx.globalAlpha = 1;
 
-  // Speed lines
-  if (raceSpeed > 80) {
-    const int = Math.min(1, (raceSpeed - 80) / 200);
-    ctx.strokeStyle = `rgba(0,229,255,${int * 0.25})`;
-    ctx.lineWidth = 1.5;
-    for (let i = 0; i < Math.floor(int * 15); i++) {
-      const sx = Math.random() * W, sy = H * 0.3 + Math.random() * H * 0.5;
-      ctx.beginPath(); ctx.moveTo(sx, sy);
-      ctx.lineTo(sx + (sx - W/2) * 0.08, sy + 40 + Math.random() * 80);
-      ctx.stroke();
+  // Speed lines — radial from horizon, always visible when moving
+  if (raceSpeed > 10) {
+    const int = Math.min(1, raceSpeed / 200) * speedLineIntensity;
+    const lineCount = Math.floor(int * 30);
+    const horizonX = W / 2, horizonY = H * 0.48;
+    
+    for (let i = 0; i < lineCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const startDist = 20 + Math.random() * 60;
+      const endDist = startDist + 60 + Math.random() * 140 * int;
+      const sx = horizonX + Math.cos(angle) * startDist;
+      const sy = horizonY + Math.sin(angle) * startDist * 0.6;
+      const ex = horizonX + Math.cos(angle) * endDist;
+      const ey = horizonY + Math.sin(angle) * endDist * 0.6;
+      
+      const isCyan = Math.random() > 0.4;
+      ctx.strokeStyle = isCyan 
+        ? `rgba(0,229,255,${int * 0.3})` 
+        : `rgba(255,255,255,${int * 0.2})`;
+      ctx.lineWidth = 1 + Math.random() * (int * 2);
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
     }
+  }
+  
+  // TURBO text flash
+  if (turboMode) {
+    const flashAlpha = 0.3 + Math.sin(turboFlash) * 0.3;
+    ctx.save();
+    ctx.font = 'bold 36px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = `rgba(255,0,255,${flashAlpha})`;
+    ctx.shadowColor = '#ff00ff';
+    ctx.shadowBlur = 20;
+    ctx.fillText('⚡ TURBO ⚡', W/2, H * 0.15);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+  
+  // Neon glow overlay at high speed
+  if (raceSpeed > 250) {
+    const neonAlpha = 0.05 + Math.sin(frameCount * 0.1) * 0.03;
+    ctx.fillStyle = `rgba(128,0,255,${neonAlpha})`;
+    ctx.fillRect(0, 0, W, H);
   }
 
   // Vignette
@@ -968,11 +1078,15 @@ function gameLoop(ts) {
   ctx.fillStyle = vig;
   ctx.fillRect(0, 0, W, H);
 
-  // Screen flash
+  // Screen flash — white flash for boost impact
   if (screenFlash > 0) {
-    ctx.fillStyle = `rgba(0,229,255,${screenFlash / 40})`;
+    const flashAlpha = Math.min(0.5, screenFlash / 30 * 0.4);
+    ctx.fillStyle = `rgba(255,255,255,${flashAlpha})`;
     ctx.fillRect(0, 0, W, H);
   }
+  
+  // Close FOV zoom transform
+  ctx.restore();
 
   // Speedometer
   drawSpeedo();
