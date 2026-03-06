@@ -590,7 +590,18 @@ window.addEventListener('message', (e) => {
   }
 
   // Handle step completions
-  if (e.data.event === 'step-complete' && gameStarted && !missionDone) {
+  if (e.data.event === 'step-complete' && !missionDone) {
+    // Auto-start game on first booking interaction (no need to click START)
+    if (!gameStarted) {
+      document.getElementById('startOverlay').classList.add('hidden');
+      document.getElementById('countdown').classList.remove('show');
+      gameStarted = true;
+      raceActive = true;
+      raceSpeed = BASE_SPEED;
+      startTime = performance.now();
+      startEngineLoop();
+      logEvent('🏁 Race auto-started — booking detected!');
+    }
     const step = STEPS[currentStep];
     if (!step) return;
     const bridgeStep = e.data.step;
@@ -598,6 +609,18 @@ window.addEventListener('message', (e) => {
       lastDetected[bridgeStep] = true;
       completeStep();
     }
+  }
+  
+  // Also auto-start on address typing
+  if (e.data.event === 'address-typing' && !gameStarted && !missionDone) {
+    document.getElementById('startOverlay').classList.add('hidden');
+    document.getElementById('countdown').classList.remove('show');
+    gameStarted = true;
+    raceActive = true;
+    raceSpeed = BASE_SPEED;
+    startTime = performance.now();
+    startEngineLoop();
+    logEvent('🏁 Race auto-started — typing detected!');
   }
 });
 
