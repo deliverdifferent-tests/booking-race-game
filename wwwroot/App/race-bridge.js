@@ -75,6 +75,7 @@
         // Find the booking scope — could be on various elements
         var bookingScope = null;
         var candidates = [
+          '#toBookingGpsSearch',
           '#fromBookingGpsSearch',
           '[ng-controller="desktopHomeControl"]',
           '[ng-controller="homeControl"]',
@@ -96,16 +97,16 @@
         if (!bookingScope || !bookingScope.booking) return;
         var b = bookingScope.booking;
         
-        // Step 1: Address typed (fromSearch has content)
-        if (b.fromSearch && b.fromSearch.length > 3 && !stepsFired['address']) {
+        // Step 1: Address typed (toSearch — delivery address)
+        if (b.toSearch && b.toSearch.length > 3 && !stepsFired['address']) {
           stepsFired['address'] = true;
-          post('step-complete', { step: 'addressTyped', value: b.fromSearch });
+          post('step-complete', { step: 'addressTyped', value: b.toSearch });
         }
         
-        // Step 2: Autocomplete selected (fromDetails populated)
-        if (b.fromDetails && b.fromDetails.formatted_address && !stepsFired['autocomplete']) {
+        // Step 2: Autocomplete selected (toDetails — delivery address populated)
+        if (b.toDetails && b.toDetails.formatted_address && !stepsFired['autocomplete']) {
           stepsFired['autocomplete'] = true;
-          post('step-complete', { step: 'autocompleteSelected', value: b.fromDetails.formatted_address });
+          post('step-complete', { step: 'autocompleteSelected', value: b.toDetails.formatted_address });
         }
         
         // Step 3: Parcel selected (stockSize set)
