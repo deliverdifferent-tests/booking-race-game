@@ -80,6 +80,13 @@ body{background:#0a0a1a;color:#e0e0e0;font-family:'Segoe UI',system-ui,-apple-sy
 .progress-bar{position:absolute;bottom:0;left:0;right:0;height:4px;background:#111;z-index:10}
 .progress-bar .fill{height:100%;background:linear-gradient(90deg,#00e5ff,#ff6b35);transition:width 0.5s ease;width:0%}
 
+/* Debug panel */
+.debug-panel{display:none;position:absolute;bottom:8px;right:120px;background:rgba(10,10,26,0.95);border:1px solid #ff6b35;border-radius:6px;padding:6px 10px;z-index:20;font-size:9px;font-family:'Courier New',monospace;color:#666;max-width:200px;backdrop-filter:blur(4px)}
+.debug-panel.show{display:block}
+.debug-panel .ok{color:#00cc66}
+.debug-panel .waiting{color:#ffcc00}
+.debug-panel .fail{color:#ff2244}
+
 /* Step popup */
 .step-popup{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);z-index:40;pointer-events:none;opacity:0;transition:opacity 0.2s,transform 0.3s}
 .step-popup.show{opacity:1;transform:translate(-50%,-50%) scale(1.1)}
@@ -121,6 +128,8 @@ canvas{border:2px solid rgba(26,26,58,0.5);border-radius:8px;display:block}
     <div class="leaderboard" id="leaderboard"><h4>🏆 Top Racers</h4></div>
     <canvas id="raceCanvas"></canvas>
     <canvas id="speedoCanvas" class="speedo" width="100" height="100"></canvas>
+    <div class="debug-panel" id="debugPanel"></div>
+    <div id="bridgeDot" title="Bridge: disconnected" style="position:absolute;top:8px;right:8px;width:10px;height:10px;border-radius:50%;background:#ff1744;z-index:20;box-shadow:0 0 6px rgba(0,0,0,0.5);transition:background 0.3s"></div>
     <div class="event-feed" id="eventFeed"></div>
 
     <div class="step-popup" id="stepPopup">
@@ -276,21 +285,50 @@ const STEPS = [
 
 let currentStep = 0, missionDone = false, gameStarted = false, raceActive = false;
 let comboVal = 1, maxCombo = 1, raceSpeed = 0, xpVal = 0, overtakeCount = 0;
-let nitroTimer = 0, screenFlash = 0, shakeX = 0, shakeY = 0;
+let nitroTimer = 0, screenFlash = 0, shakeX = 0, shakeY = 0, fovZoom = 1.0;
 let startTime = null, elapsed = 0;
 let lastDetected = {};
+let bridgeStatus = 'disconnected'; // 'disconnected' | 'loading' | 'connected'
+let bridgeVersion = null;
+let lastBridgeEvent = null;
+let bridgeMsgCount = 0;
 let steerInput = 0; // -1 to 1 from keyboard
 const BASE_SPEED = 40; // Car always drives at minimum this speed once race starts
+let turboMode = false, turboFlash = 0;
+let speedLineIntensity = 1.0;
 
-// ─── KEYBOARD STEERING ───
+// ─── KEYBOARD STEERING + DEBUG ───
+let debugMode = false;
 document.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowLeft') steerInput = -1;
   if (e.key === 'ArrowRight') steerInput = 1;
+  if (e.key === 'd' && e.ctrlKey) {
+    e.preventDefault();
+    debugMode = !debugMode;
+    document.getElementById('debugPanel').classList.toggle('show', debugMode);
+  }
 });
 document.addEventListener('keyup', (e) => {
   if (e.key === 'ArrowLeft' && steerInput < 0) steerInput = 0;
   if (e.key === 'ArrowRight' && steerInput > 0) steerInput = 0;
 });
+
+function updateDebug() {
+  if (!debugMode) return;
+  const statusText = bridgeStatus === 'connected' ? '✓ Connected' : 
+                     bridgeStatus === 'loading' ? '⏳ Loading...' : 
+                     '✗ Disconnected';
+  const statusClass = bridgeStatus === 'connected' ? 'ok' : 
+                      bridgeStatus === 'loading' ? 'waiting' : 'fail';
+  
+  document.getElementById('debugPanel').innerHTML = `
+    <div>Bridge: <span class="${statusClass}">${statusText}</span> v${bridgeVersion || '?'}</div>
+    <div>Step: ${currentStep}/${STEPS.length} (${STEPS[currentStep]?.detect||'done'})</div>
+    <div>Last event: ${lastBridgeEvent || 'none'}</div>
+    <div>Detected steps: ${Object.keys(lastDetected).join(', ') || 'none'}</div>
+    <div>Msgs received: ${bridgeMsgCount}</div>
+  `;
+}
 
 // ─── LEADERBOARD ───
 function getLeaderboard() { try { return JSON.parse(localStorage.getItem('dd-race-lb') || '[]'); } catch(e) { return []; } }
@@ -358,15 +396,31 @@ function completeStep() {
   const step = STEPS[currentStep];
   comboVal = Math.min(3, comboVal + 0.4);
   if (comboVal > maxCombo) maxCombo = comboVal;
-  const boost = 40 * comboVal;
-  raceSpeed = Math.min(300, raceSpeed + boost);
+  
+  // DRAMATIC BOOST - 150-200 base, scaled by combo
+  const boost = (150 + Math.random() * 50) * comboVal;
+  raceSpeed = Math.min(350, raceSpeed + boost);
   xpVal += Math.round(100 * comboVal);
   overtakeCount += Math.floor(comboVal);
-  nitroTimer = 90;
-  screenFlash = 18;
-  shakeX = (Math.random() - 0.5) * 8;
-  shakeY = (Math.random() - 0.5) * 4;
-  for (let i = 0; i < 5; i++) traffic.push(makeTraffic());
+  
+  // DRAMATIC VISUAL EFFECTS
+  nitroTimer = 120; // Longer nitro effect
+  screenFlash = 30; // Brighter, longer flash
+  speedLineIntensity = 3.0; // DOUBLE intensity for 2 seconds
+  
+  // Screen shake - 10-15px
+  shakeX = (Math.random() - 0.5) * 30;
+  shakeY = (Math.random() - 0.5) * 20;
+  
+  // FOV zoom effect (will animate back in gameLoop)
+  fovZoom = 1.08;
+  
+  // Spawn more traffic
+  for (let i = 0; i < 8; i++) traffic.push(makeTraffic());
+  
+  // Spawn visual particles
+  spawnParticles(canvas.width/2, canvas.height-65, 25, '#00e5ff', 20);
+  spawnParticles(canvas.width/2, canvas.height-65, 15, '#ff6b35', 15);
 
   playStepComplete();
   if (comboVal > 1.5) playComboUp();
@@ -466,11 +520,15 @@ function restartGame() {
   currentStep = 0; missionDone = false; comboVal = 1; maxCombo = 1;
   raceSpeed = BASE_SPEED; xpVal = 0; overtakeCount = 0;
   nitroTimer = 0; screenFlash = 0; startTime = null; elapsed = 0; lastDetected = {};
+  bridgeStatus = 'disconnected'; bridgeMsgCount = 0; lastBridgeEvent = null;
+  updateBridgeIndicator();
   gameStarted = true; raceActive = true;
   resetRace();
   renderSteps();
   updateHUD();
   renderLeaderboard();
+  // Send reset to bridge then reload iframe
+  try { document.getElementById('bookingFrame').contentWindow.postMessage({ type: 'race-reset' }, '*'); } catch(e) {}
   document.getElementById('bookingFrame').contentWindow.location.reload();
 }
 
@@ -483,194 +541,70 @@ function updateHUD() {
   }
 }
 
-// ─── IFRAME DETECTION (Dual: Angular scope watching + DOM polling fallback) ───
-let angularHooked = false;
+// ─── IFRAME DETECTION (Race Bridge — postMessage from inside Angular) ───
 
-function tryAngularHook() {
-  // Inject Angular scope watchers into the booking iframe for reliable detection
-  try {
-    const frame = document.getElementById('bookingFrame');
-    const doc = frame.contentDocument || frame.contentWindow.document;
-    const win = frame.contentWindow;
-    if (!win.angular || angularHooked) return;
-    
-    // Wait for Angular to bootstrap
-    const ngApp = win.angular.element(doc.body || doc.querySelector('[ng-app]'));
-    if (!ngApp || !ngApp.injector) return;
-    
-    try {
-      const $rootScope = ngApp.injector().get('$rootScope');
-      
-      // Watch for address changes (fromSearch model)
-      $rootScope.$watch(function() {
-        try {
-          const fromEl = doc.getElementById('fromBookingGpsSearch');
-          if (fromEl) {
-            const scope = win.angular.element(fromEl).scope();
-            return scope && scope.booking ? scope.booking.fromSearch : null;
-          }
-        } catch(e) {}
-        return null;
-      }, function(newVal) {
-        if (newVal && newVal.length > 3) {
-          window.postMessage({ type: 'booking-step', step: 'address', value: newVal }, '*');
-        }
-      });
-      
-      // Watch for fromDetails (autocomplete selection)
-      $rootScope.$watch(function() {
-        try {
-          const fromEl = doc.getElementById('fromBookingGpsSearch');
-          if (fromEl) {
-            const scope = win.angular.element(fromEl).scope();
-            return scope && scope.booking && scope.booking.fromDetails ? 'set' : null;
-          }
-        } catch(e) {}
-        return null;
-      }, function(newVal) {
-        if (newVal === 'set') {
-          window.postMessage({ type: 'booking-step', step: 'autocomplete' }, '*');
-        }
-      });
+// Bridge step name → game STEPS detect name
+const BRIDGE_STEP_MAP = {
+  'addressTyped': 'addressTyped',
+  'autocompleteSelected': 'autocompleteSelected',
+  'parcelSelected': 'parcelSelected',
+  'speedSelected': 'speedSelected',
+  'jobBooked': 'jobBooked'
+};
 
-      // Watch for stockSize (parcel selection)  
-      $rootScope.$watch(function() {
-        try {
-          const el = doc.querySelector('#packageSize select') || doc.querySelector('select[ng-model="booking.stockSize"]');
-          if (el) {
-            const scope = win.angular.element(el).scope();
-            return scope && scope.booking && scope.booking.stockSize ? scope.booking.stockSize.name : null;
-          }
-        } catch(e) {}
-        return null;
-      }, function(newVal) {
-        if (newVal) {
-          window.postMessage({ type: 'booking-step', step: 'parcel', value: newVal }, '*');
-        }
-      });
-
-      // Watch for rate selection (speed)
-      $rootScope.$watch(function() {
-        try {
-          const el = doc.querySelector('.speed-button');
-          if (el) {
-            const scope = win.angular.element(el).scope();
-            return scope && scope.booking && scope.booking.selectedRate ? scope.booking.selectedRate.serviceName : null;
-          }
-        } catch(e) {}
-        return null;
-      }, function(newVal) {
-        if (newVal) {
-          window.postMessage({ type: 'booking-step', step: 'speed', value: newVal }, '*');
-        }
-      });
-
-      // Watch for step change to jobBooked
-      $rootScope.$watch(function() {
-        try {
-          const scope = ngApp.scope();
-          return scope ? scope.step : null;
-        } catch(e) {}
-        return null;
-      }, function(newVal) {
-        if (newVal === 'jobBooked') {
-          window.postMessage({ type: 'booking-step', step: 'book' }, '*');
-        }
-      });
-
-      angularHooked = true;
-      logEvent('🔗 Angular hooks connected');
-      console.log('[Race] Angular scope watchers installed successfully');
-    } catch(e) {
-      console.log('[Race] Angular injector not ready yet:', e.message);
-    }
-  } catch(e) {
-    console.log('[Race] Hook attempt failed:', e.message);
-  }
+function updateBridgeIndicator() {
+  const dot = document.getElementById('bridgeDot');
+  if (!dot) return;
+  dot.style.background = bridgeStatus === 'connected' ? '#00e676' :
+                          bridgeStatus === 'loading' ? '#ffab00' : '#ff1744';
+  dot.title = 'Bridge: ' + bridgeStatus;
 }
 
-// Try to hook Angular every second until success
-const hookInterval = setInterval(() => {
-  if (angularHooked) { clearInterval(hookInterval); return; }
-  tryAngularHook();
-}, 1000);
-
-// Listen for postMessage from Angular hooks
 window.addEventListener('message', (e) => {
-  if (!e.data || e.data.type !== 'booking-step' || !gameStarted || missionDone) return;
-  const step = STEPS[currentStep];
-  if (!step) return;
-
-  const stepMap = { 'address': 'addressTyped', 'autocomplete': 'autocompleteSelected', 'parcel': 'parcelSelected', 'speed': 'speedSelected', 'book': 'jobBooked' };
+  if (!e.data || e.data.type !== 'race-bridge') return;
   
-  if (stepMap[e.data.step] === step.detect && !lastDetected[e.data.step]) {
-    lastDetected[e.data.step] = true;
-    completeStep();
+  bridgeMsgCount++;
+  lastBridgeEvent = e.data.event;
+  updateDebug();
+
+  // Log all bridge events to the feed
+  const evtLabel = e.data.event + (e.data.step ? ': ' + e.data.step : '') + (e.data.state ? ' → ' + e.data.state : '');
+  logEvent('🌉 ' + evtLabel);
+  console.log('[Race Bridge]', e.data);
+
+  // Update bridge connection status
+  switch (e.data.event) {
+    case 'bridge-loaded':
+      bridgeStatus = 'loading';
+      bridgeVersion = e.data.version || null;
+      updateBridgeIndicator();
+      break;
+    case 'angular-ready':
+      bridgeStatus = 'loading';
+      updateBridgeIndicator();
+      break;
+    case 'hooks-installed':
+      bridgeStatus = 'connected';
+      updateBridgeIndicator();
+      break;
+  }
+
+  // Handle step completions
+  if (e.data.event === 'step-complete' && gameStarted && !missionDone) {
+    const step = STEPS[currentStep];
+    if (!step) return;
+    const bridgeStep = e.data.step;
+    if (BRIDGE_STEP_MAP[bridgeStep] === step.detect && !lastDetected[bridgeStep]) {
+      lastDetected[bridgeStep] = true;
+      completeStep();
+    }
   }
 });
 
-// DOM polling fallback (in case Angular hooks fail)
+// HUD update interval (no DOM polling needed)
 setInterval(() => {
   if (missionDone || !gameStarted) return;
   updateHUD();
-  if (angularHooked) return; // Angular hooks handle it
-  
-  try {
-    const frame = document.getElementById('bookingFrame');
-    const doc = frame.contentDocument || frame.contentWindow.document;
-    if (!doc || !doc.body) return;
-    const step = STEPS[currentStep];
-    if (!step) return;
-
-    switch (step.detect) {
-      case 'addressTyped': {
-        const fromInput = doc.getElementById('fromBookingGpsSearch');
-        const toInput = doc.getElementById('toBookingGpsSearch');
-        for (const inp of [fromInput, toInput]) {
-          if (inp && inp.value && inp.value.length > 3 && !lastDetected.address) {
-            lastDetected.address = true; completeStep(); return;
-          }
-        }
-        const inputs = doc.querySelectorAll('input.desktop-input[type="text"]');
-        for (const inp of inputs) {
-          if (inp.value && inp.value.length > 5 && inp.offsetParent !== null && !lastDetected.address) {
-            lastDetected.address = true; completeStep(); return;
-          }
-        }
-        break;
-      }
-      case 'autocompleteSelected': {
-        const inputs = doc.querySelectorAll('input.desktop-input[type="text"]');
-        let filled = 0;
-        inputs.forEach(inp => { if (inp.value && inp.value.length > 2 && inp.offsetParent !== null) filled++; });
-        if (filled >= 2 && !lastDetected.autocomplete) { lastDetected.autocomplete = true; completeStep(); return; }
-        break;
-      }
-      case 'parcelSelected': {
-        const selects = doc.querySelectorAll('select.desktop-input, select.data-input');
-        for (const sel of selects) {
-          const opt = sel.options[sel.selectedIndex];
-          if (opt && (opt.text || '').match(/satchel|box|banana|small|medium|large/i) && !lastDetected.parcel) {
-            lastDetected.parcel = true; completeStep(); return;
-          }
-        }
-        break;
-      }
-      case 'speedSelected': {
-        if (doc.querySelectorAll('.speed-button.selected-border').length > 0 && !lastDetected.speed) {
-          lastDetected.speed = true; completeStep(); return;
-        }
-        break;
-      }
-      case 'jobBooked': {
-        const t = doc.body.innerText || '';
-        if ((t.includes('Confirmation Details') || /TEST-\d+/.test(t) || t.includes('Job Number')) && !lastDetected.booked) {
-          lastDetected.booked = true; completeStep(); return;
-        }
-        break;
-      }
-    }
-  } catch(e) { /* cross-origin */ }
 }, 400);
 
 // ─── PSEUDO-3D RACE ENGINE v2 ───
